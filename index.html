@@ -15,7 +15,7 @@
       gap:0;
       align-items:stretch;
       min-height:0;
-      --left: 78%; /* default featured width */
+      --left: 78%;
     }
     .pane-left{flex:0 0 var(--left); min-width:50%;}
     .pane-right{flex:1 1 auto; min-width:0;}
@@ -398,11 +398,11 @@
             <span class="featuredBadge">Featured</span>
           </div>
 
-          <div class="ratio16x9" id="featuredRatio">
+          <div class="ratio16x9">
             <div class="featuredStage" id="featuredStage"></div>
           </div>
 
-          <div class="featuredMeta" id="featuredMeta" aria-live="polite">
+          <div class="featuredMeta" aria-live="polite">
             <div class="fText">
               <p class="fTitle" id="fTitle">—</p>
               <p class="fDesc" id="fDesc">—</p>
@@ -486,6 +486,9 @@
   </div>
 
   <script>
+    // ----------------------------
+    // ✅ SEA taxonomy / validation
+    // ----------------------------
     const SEA_TAXONOMY = {
       "Number": {
         objGroups: {
@@ -549,17 +552,10 @@
     const VALID_STRANDS = ["Number","Geometry","Measurement","Statistics"];
     const VALID_PROCESSES = ["Knowing","Applying","Reasoning"];
 
-    const videos = []; // placeholder replaced below
-  </script>
-
-  <script>
-    // --- Inject the videos array in a separate script for easier editing ---
-    window.videos = window.videos || [];
-  </script>
-
-  <script>
-    // ✅ Video list (includes your new Ribbon video)
-    window.videos = [
+    // ----------------------------
+    // ✅ VIDEO LIST (includes Ribbon)
+    // ----------------------------
+    let videos = [
       {"title":"VAT Inclusive Price \u2192 Original Price (12.5% Tax)","desc":"Reverse VAT problem. $720 is the VAT inclusive price. Uses bar model and fraction reasoning (12.5% = 1/8) to find the original price before tax.","topic":"Measurement","subtopic":"Money","keywords":["VAT","value added tax","12.5 percent","12.5%","one eighth","1/8","inclusive price","exclusive price","before tax","after tax","reverse VAT","fraction method","bar model","keep change flip","reciprocal","720 dinner","tax word problem"],"src":"https://app.screencast.com/0XKGa9Fux4RyT/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Taxes.gif","answerKeys":["640","$640","640.00","$640.00"],"answerHint":"Original price before VAT","strand":"Measurement","objGroup":"Money","process":"Reasoning"},
 
       {"title":"Ribbon Problem: 8.4 m, Use 1/4, Cut into 70 cm Bows","desc":"Convert meters to centimeters, find 1/4 of 840 cm used for gifts, subtract to get 630 cm, then divide by 70 cm to find how many bows were made.","topic":"Measurement","subtopic":"Linear Measure","keywords":["ribbon","bows","meters to centimeters","convert units","metric conversion","one quarter","1/4","quarter of","fraction of a quantity","part whole","part-whole","whole and parts","840 cm","210 cm","630 cm","70 cm","division","how many seventies","length","measurement","word problem"],"src":"https://app.screencast.com/0pgNqTPQ1S6sd/e","answerKeys":["9","9 bows","nine","nine bows"],"answerHint":"How many bows were made?","strand":"Measurement","objGroup":"Linear Measure","process":"Reasoning"},
@@ -608,12 +604,10 @@
       {"title":"Corrections: Practice Sheet 7","desc":"Corrections practice sheet 7 (worked examples / homework review)","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["corrections","practice","review","worked examples","homework"],"src":"https://app.screencast.com/jV16CDST0EchD/e","strand":"Number","objGroup":"Problem Solving","process":"Applying"},
       {"title":"Lesson Video (Screencast)","desc":"General lesson / review video","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["lesson","review","revision","worked examples"],"src":"https://app.screencast.com/Do4qujmw2L9oy/e","strand":"Number","objGroup":"Problem Solving","process":"Knowing"}
     ];
-  </script>
 
-  <script>
-    // Use the injected videos
-    const videos = (window.videos || []);
-
+    // ----------------------------
+    // ✅ App Logic
+    // ----------------------------
     function seaTermsFor(v){
       const s = SEA_TAXONOMY[v.strand];
       if (!s || !s.objGroups) return [];
@@ -641,13 +635,11 @@
     function normalizeVideo(v){
       const out = { ...v };
 
-      // Force /e at end of Screencast src
       if (out.src) {
         out.src = String(out.src).trim();
         if (!out.src.endsWith("/e")) out.src = out.src.replace(/\/?$/,"/e");
       }
 
-      // Normalize "Data Handling" => "Statistics" (SEA strand wording)
       if ((out.topic || "").trim().toLowerCase() === "data handling"){
         out.topic = "Statistics";
       }
@@ -660,10 +652,8 @@
         out.process = "Applying";
       }
 
-      // Keywords
       out.keywords = Array.isArray(out.keywords) ? out.keywords : (out.keywords ? [String(out.keywords)] : []);
 
-      // ✅ Answers normalize to answerKeys array
       let keys = null;
       if (Array.isArray(out.answerKeys)) keys = out.answerKeys;
       else if (typeof out.answerKeys === "string" && out.answerKeys.trim()) keys = [out.answerKeys.trim()];
@@ -671,18 +661,13 @@
       else if (typeof out.answerKey === "string" && out.answerKey.trim()) keys = [out.answerKey.trim()];
       out.answerKeys = keys ? keys.map(x => String(x).trim()).filter(Boolean) : null;
 
-      // SEA objective-language terms injected
       out._sea = seaTermsFor(out);
-
-      // Auto tokens for keyword search
       out._auto = autoKeywords(out);
 
       return out;
     }
 
-    for (let i = 0; i < videos.length; i++){
-      videos[i] = normalizeVideo(videos[i]);
-    }
+    videos = videos.map(normalizeVideo);
 
     const STRAND_COLORS = {
       "Number":      { bg:"rgba(59,130,246,.18)",  border:"rgba(59,130,246,.35)" },
@@ -717,7 +702,6 @@
     const fObjGroup = document.getElementById("fObjGroup");
     const fProcess  = document.getElementById("fProcess");
 
-    // Answer UI
     const answerLabel = document.getElementById("answerLabel");
     const answerInput = document.getElementById("answerInput");
     const checkAnswerBtn = document.getElementById("checkAnswerBtn");
@@ -734,7 +718,6 @@
       iframe.setAttribute("allowfullscreen","true");
       return iframe;
     }
-
     function makeSlide(src, extraClass=""){
       const slide = document.createElement("div");
       slide.className = `slide ${extraClass}`.trim();
@@ -757,14 +740,12 @@
         .replace(/\s+/g," ")
         .trim();
     }
-
     function getAnswerVariants(v){
       if (!v || !Array.isArray(v.answerKeys) || v.answerKeys.length === 0) return null;
       const raw = v.answerKeys.map(x => String(x));
       const normed = raw.map(x => normalizeForCompare(x));
       return { raw, norm: normed };
     }
-
     function setAnswerUI(){
       const v = videos[featuredIdx];
       const variants = getAnswerVariants(v);
@@ -780,7 +761,6 @@
         answerInput.placeholder = "Answer not added for this video yet";
         return;
       }
-
       answerInput.disabled = false;
       checkAnswerBtn.disabled = false;
       answerInput.placeholder = "Type your answer (any reasonable format)...";
@@ -799,7 +779,6 @@
       }
 
       const ok = variants.norm.some(k => k === user);
-
       if (ok){
         answerMsg.textContent = "✅ Correct!";
         revealAnswerBtn.style.display = "none";
@@ -849,6 +828,7 @@
       const oldSrc = videos[featuredIdx].src;
       const newSrc = videos[clickedIdx].src;
 
+      // swap objects (so featured is always index 0 "slot" behavior)
       const temp = videos[featuredIdx];
       videos[featuredIdx] = videos[clickedIdx];
       videos[clickedIdx] = temp;
@@ -1222,10 +1202,8 @@
     buildStrandOptions();
     buildObjOptions();
     setFeaturedInstant(0);
-
     enforceEitherOr("dropdown");
     buildList();
-
     requestAnimationFrame(syncSidebarHeight);
     setTimeout(syncSidebarHeight, 200);
   </script>
