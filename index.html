@@ -3,32 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SEA Video Album • Diagnostics Build</title>
+  <title>SEA Video Album • Framework-Aligned Filters + Answer Checker</title>
   <style>
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0b1220;color:#e9eefc}
     .wrap{width:min(1500px,100%);margin:0 auto;padding:14px}
-
-    /* diagnostics */
-    #jsBadge{
-      position:fixed; right:12px; bottom:12px; z-index:99999;
-      font-size:12px; padding:8px 10px; border-radius:999px;
-      background:rgba(34,197,94,.16); border:1px solid rgba(34,197,94,.35);
-      box-shadow:0 10px 25px rgba(0,0,0,.35);
-      user-select:none;
-    }
-    #errBox{
-      position:fixed; left:12px; right:12px; top:12px; z-index:99999;
-      display:none;
-      padding:12px 12px;
-      border-radius:14px;
-      background:rgba(239,68,68,.14);
-      border:1px solid rgba(239,68,68,.35);
-      box-shadow:0 10px 25px rgba(0,0,0,.45);
-      white-space:pre-wrap;
-      font-size:12px;
-      line-height:1.35;
-    }
 
     /* ✅ Split layout with draggable divider */
     .split{
@@ -36,7 +15,7 @@
       gap:0;
       align-items:stretch;
       min-height:0;
-      --left: 78%;
+      --left: 78%; /* default featured width */
     }
     .pane-left{flex:0 0 var(--left); min-width:50%;}
     .pane-right{flex:1 1 auto; min-width:0;}
@@ -64,19 +43,23 @@
       transform:translate(-50%,-50%);
       border-radius:999px;
       background:rgba(255,255,255,.18);
-      box-shadow:-6px 0 0 rgba(255,255,255,.12), 6px 0 0 rgba(255,255,255,.12);
+      box-shadow:
+        -6px 0 0 rgba(255,255,255,.12),
+         6px 0 0 rgba(255,255,255,.12);
       opacity:.85;
     }
     .divider:hover::before{background:rgba(255,255,255,.12)}
     .dragging .divider::before{background:rgba(255,255,255,.16)}
     .dragging{cursor:col-resize}
 
+    /* Stack on mobile */
     @media(max-width:900px){
       .split{display:block}
       .divider{display:none}
       .pane-left,.pane-right{min-width:0;flex:auto}
     }
 
+    /* ✅ Featured */
     .featured{
       border-radius:16px;background:rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
@@ -85,10 +68,16 @@
       display:flex;
       flex-direction:column;
     }
+
+    /* Permanent space ABOVE the video */
     .featuredTop{
       padding:10px 12px;
       border-bottom:1px solid rgba(255,255,255,.10);
-      display:flex; align-items:center; justify-content:space-between;
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
       background:rgba(0,0,0,.18);
     }
     .featuredBadge{
@@ -99,9 +88,11 @@
       letter-spacing:.3px;
       background:rgba(0,0,0,.40);
       border:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(8px);
       white-space:nowrap;
     }
 
+    /* Featured height anchor (16:9) */
     .ratio16x9{
       position:relative;width:100%;
       padding-bottom:56.25%;
@@ -110,12 +101,23 @@
     }
     .featuredStage{ position:absolute; inset:0; overflow:hidden; }
 
-    .slide{ position:absolute; inset:0; will-change:transform; transform:translateX(0); background:rgba(0,0,0,.2); }
-    .slide iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+    /* Sliding frames */
+    .slide{
+      position:absolute; inset:0;
+      will-change:transform;
+      transform:translateX(0);
+      background:rgba(0,0,0,.2);
+    }
+    .slide iframe{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      border:0;
+    }
     .anim{ transition:transform 520ms cubic-bezier(.2,.85,.2,1); }
     .fromRight{ transform:translateX(100%); }
     .toLeft{ transform:translateX(-100%); }
 
+    /* ✅ Meta bar UNDER the video (no overlap) */
     .featuredMeta{
       padding:10px 12px;
       background:rgba(0,0,0,.24);
@@ -124,30 +126,81 @@
       gap:12px;
       align-items:flex-start;
       justify-content:space-between;
+      flex:0 0 auto;
     }
     .fText{min-width:0;flex:1 1 auto}
-    .fTitle{font-weight:800;font-size:14px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 4px;}
-    .fDesc{margin:0;font-size:12.5px;opacity:.9;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-    .fPills{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .pill{font-size:11px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);white-space:nowrap;opacity:.95;}
+    .fTitle{
+      font-weight:800;
+      font-size:14px;
+      line-height:1.25;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      margin:0 0 4px;
+    }
+    .fDesc{
+      margin:0;
+      font-size:12.5px;
+      opacity:.9;
+      line-height:1.35;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    .fPills{display:flex;gap:8px;flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end}
+    .pill{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      white-space:nowrap;
+      opacity:.95;
+    }
 
-    .answerRow{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    /* ✅ Answer checker */
+    .answerRow{
+      margin-top:10px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
     .miniInput{
-      height:36px;max-width:360px;width:min(360px, 100%);
-      border-radius:12px;border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.22);color:#e9eefc;padding:0 12px;outline:none;font-size:14px;
+      height:36px;
+      max-width:360px;
+      width:min(360px, 100%);
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22);
+      color:#e9eefc;
+      padding:0 12px;
+      outline:none;
+      font-size:14px;
     }
     .miniInput::placeholder{color:rgba(233,238,252,.65)}
     .miniInput:disabled{opacity:.55; cursor:not-allowed}
 
+    /* Sidebar */
     .sidebar{
       border-radius:16px;background:rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
       box-shadow:0 10px 30px rgba(0,0,0,.35);
       overflow:hidden;
-      display:flex;flex-direction:column;min-height:0;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
     }
-    .sideHeader{padding:12px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid rgba(255,255,255,.10);}
+
+    .sideHeader{
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
     .headerRow{display:flex;gap:10px;align-items:center;justify-content:space-between}
     .hint{font-size:12px;opacity:.85}
     .sideControls{display:flex;gap:8px}
@@ -159,6 +212,7 @@
     .btn:hover{background:rgba(255,255,255,.08)}
     .btn:disabled{opacity:.55;cursor:not-allowed}
 
+    /* Filters */
     .filters{display:flex;flex-direction:column;gap:10px}
     .searchWrap{display:flex;gap:10px;align-items:center}
     .search{
@@ -171,7 +225,8 @@
     .search:disabled{opacity:.55; cursor:not-allowed}
     .selectRow{display:flex;gap:10px;align-items:center}
     .select{
-      width:100%;height:42px;border-radius:12px;
+      width:100%;
+      height:42px;border-radius:12px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(0,0,0,.22);
       color:#e9eefc;
@@ -188,8 +243,16 @@
       white-space:nowrap;opacity:.9
     }
 
-    .list{flex:1 1 auto;min-height:0;overflow:auto;padding:12px;scroll-behavior:smooth;}
+    /* List */
+    .list{
+      flex:1 1 auto;
+      min-height:0;
+      overflow:auto;
+      padding:12px;
+      scroll-behavior:smooth;
+    }
 
+    /* ✅ Cards */
     .card{
       position:relative;
       padding:12px;
@@ -198,61 +261,154 @@
       background:rgba(0,0,0,.18);
       margin-bottom:12px;
       transition:transform .15s ease, background .15s ease, border-color .15s ease;
-      display:flex;flex-direction:column;gap:10px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
     .card:hover{transform:translateY(-2px);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18)}
 
     .badge{
-      display:flex;gap:8px;align-items:center;justify-content:space-between;
-      font-size:11px;padding:6px 10px;border-radius:999px;
+      position:static;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(0,0,0,.35);
-      max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      backdrop-filter:blur(6px);
+      max-width:100%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
-    .badgeLeft{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto;}
-    .badgeRight{flex:0 0 auto;opacity:.9;border-left:1px solid rgba(255,255,255,.18);padding-left:8px;margin-left:2px;}
+    .badgeLeft{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      min-width:0;
+      flex:1 1 auto;
+    }
+    .badgeRight{
+      flex:0 0 auto;
+      opacity:.9;
+      border-left:1px solid rgba(255,255,255,.18);
+      padding-left:8px;
+      margin-left:2px;
+    }
 
-    .thumb{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);position:relative;}
-    .thumbRatio{position:relative;width:100%;padding-bottom:56.25%;height:0;overflow:hidden;background:rgba(255,255,255,.04);border-radius:12px;}
-    .thumbImg{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);object-fit:cover;display:block;}
+    .thumb{
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.04);
+      position:relative;
+      transform: translateZ(0);
+      -webkit-mask-image: -webkit-radial-gradient(white, black);
+    }
+    .thumbRatio{
+      position:relative;
+      width:100%;
+      padding-bottom:56.25%;
+      height:0;
+      overflow:hidden;
+      background:rgba(255,255,255,.04);
+      border-radius:12px;
+    }
+    .thumbImg{
+      position:absolute;
+      inset:-1px;
+      width:calc(100% + 2px);
+      height:calc(100% + 2px);
+      object-fit:cover;
+      object-position:center;
+      display:block;
+      filter:saturate(1.05) contrast(1.03);
+      transform: translateZ(0);
+      will-change: transform;
+    }
     .playDot{
-      position:absolute;left:10px;bottom:10px;width:28px;height:28px;border-radius:999px;
-      background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.18);
-      display:flex;align-items:center;justify-content:center;font-size:12px;pointer-events:none;
+      position:absolute;
+      left:10px; bottom:10px;
+      width:28px; height:28px;
+      border-radius:999px;
+      background:rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.18);
+      display:flex;align-items:center;justify-content:center;
+      backdrop-filter:blur(6px);
+      font-size:12px;
+      pointer-events:none;
     }
 
-    .meta{display:flex;flex-direction:column;gap:6px;min-width:0;}
-    .title{font-weight:800;font-size:14px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .sub{font-size:13px;opacity:.92;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+    .meta{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+      padding-top:0;
+    }
+    .title{
+      font-weight:800;
+      font-size:14px;
+      line-height:1.25;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis
+    }
+    .sub{
+      font-size:13px;
+      opacity:.92;
+      line-height:1.4;
+      display:-webkit-box;
+      -webkit-line-clamp:3;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
 
-    .cardBtn{position:absolute;inset:0;border:0;background:transparent;cursor:pointer;border-radius:14px;}
+    .cardBtn{
+      position:absolute;inset:0;border:0;background:transparent;
+      cursor:pointer;border-radius:14px;
+    }
     .cardBtn:focus{outline:2px solid rgba(255,255,255,.25);outline-offset:2px}
+
+    @media(max-width:900px){
+      .sidebar{height:auto!important}
+      .sub{-webkit-line-clamp:5}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .anim{transition:none!important}
+      .card{transition:none!important}
+      .list{scroll-behavior:auto}
+    }
   </style>
 </head>
 
 <body>
-  <div id="errBox"></div>
-  <div id="jsBadge">JS: waiting…</div>
-
   <div class="wrap">
     <div class="split" id="split">
 
+      <!-- Featured (left pane) -->
       <div class="pane-left">
         <section class="featured" id="featuredBox">
+
           <div class="featuredTop">
             <span class="featuredBadge">Featured</span>
           </div>
 
-          <div class="ratio16x9">
+          <div class="ratio16x9" id="featuredRatio">
             <div class="featuredStage" id="featuredStage"></div>
           </div>
 
-          <div class="featuredMeta" aria-live="polite">
+          <div class="featuredMeta" id="featuredMeta" aria-live="polite">
             <div class="fText">
               <p class="fTitle" id="fTitle">—</p>
               <p class="fDesc" id="fDesc">—</p>
 
-              <div class="answerRow">
+              <!-- ✅ Answer Checker -->
+              <div class="answerRow" id="answerRow">
                 <span class="pill" id="answerLabel">Answer</span>
                 <input id="answerInput" class="miniInput" type="text" placeholder="Answer not added for this video yet" disabled />
                 <button class="btn" id="checkAnswerBtn" type="button" disabled>Check</button>
@@ -267,17 +423,20 @@
               <span class="pill" id="fProcess">Process</span>
             </div>
           </div>
+
         </section>
       </div>
 
+      <!-- Draggable divider -->
       <div class="divider" id="divider" role="separator" aria-orientation="vertical"
            aria-label="Resize featured video and sidebar" tabindex="0"></div>
 
+      <!-- Sidebar (right pane) -->
       <div class="pane-right">
         <aside class="sidebar" id="sidebar">
           <div class="sideHeader">
             <div class="headerRow">
-              <div class="hint">SEA Math Video Album</div>
+              <div class="hint">SEA Math Video Album (Framework-Aligned)</div>
               <div class="sideControls">
                 <button class="btn" id="resetFilters" type="button">Reset</button>
                 <button class="btn" id="scrollUp" type="button">▲</button>
@@ -292,26 +451,30 @@
                 <div class="count" id="countLabel">0</div>
               </div>
 
+              <!-- Strand -->
               <div class="selectRow">
-                <select class="select" id="strandSelect">
+                <select class="select" id="strandSelect" aria-label="Filter by SEA strand">
                   <option value="all">All SEA Strands</option>
                 </select>
               </div>
 
+              <!-- Objective Group -->
               <div class="selectRow" id="objRow" style="display:none;">
-                <select class="select" id="objSelect">
+                <select class="select" id="objSelect" aria-label="Filter by objective group">
                   <option value="all">All Objective Groups</option>
                 </select>
               </div>
 
+              <!-- Thinking Process -->
               <div class="selectRow">
-                <select class="select" id="processSelect">
+                <select class="select" id="processSelect" aria-label="Filter by thinking process">
                   <option value="all">All Thinking Processes</option>
                   <option value="Knowing">Knowing</option>
                   <option value="Applying">Applying</option>
                   <option value="Reasoning">Reasoning</option>
                 </select>
               </div>
+
             </div>
           </div>
 
@@ -323,541 +486,775 @@
   </div>
 
   <script>
-  (function(){
-    const errBox = document.getElementById("errBox");
-    const jsBadge = document.getElementById("jsBadge");
+    const SEA_TAXONOMY = {
+      "Number": {
+        objGroups: {
+          "Whole Numbers & Operations": [
+            "addition","subtraction","multiplication","division","remainder","estimate","estimation",
+            "reasonableness","word problems","long multiplication","long division","place value"
+          ],
+          "Number Patterns": [
+            "patterns","pattern rule","sequence","term","next term","growing pattern","decreasing pattern","increasing pattern"
+          ],
+          "Number Relationships (Algebraic Thinking)": [
+            "number sentences","unknown","equation","solve for unknown","symbol","algebraic thinking","associative property"
+          ],
+          "Fractions": [
+            "fractions","proper fraction","improper fraction","mixed number","equivalent fractions",
+            "common denominator","regrouping","simplify","lowest terms"
+          ],
+          "Decimals": [
+            "decimals","decimal divisor","hundredths","tenths","round decimals","divide decimals"
+          ],
+          "Percent": [
+            "percent","percentage","%","percent of a quantity","percent as fraction","percent as decimal"
+          ],
+          "Ratio & Proportion": [
+            "ratio","proportion","unitary method","rate","unequal sharing","times as much","more than","less than"
+          ],
+          "Problem Solving": [
+            "bar model","comparison","guess and check","trial and improvement","systematic list",
+            "working backwards","multi-step","word problem","reasoning"
+          ]
+        }
+      },
+      "Measurement": {
+        objGroups: {
+          "Time": [
+            "time","elapsed time","timeline","24-hour clock","hours","minutes","seconds","convert minutes to hours"
+          ],
+          "Linear Measure": [
+            "length","linear measurement","cm","m","mm","km","measure","convert units"
+          ],
+          "Perimeter": [
+            "perimeter","rectilinear","compound shapes","grid","missing length","common intervals"
+          ],
+          "Area": [
+            "area","square units","tiling","compound shapes","grid"
+          ],
+          "Money": [
+            "money","dollars","ttd","coins","notes","unit cost","best buy","vat","tax","interest","principal","rate"
+          ]
+        }
+      },
+      "Geometry": { objGroups: {} },
+      "Statistics": {
+        objGroups: {
+          "Mode & Mean": ["mean","average","mode","total divided by"],
+          "Data Representation": ["graphs","bar graph","line graph","scale","key","tally","frequency"]
+        }
+      }
+    };
 
-    function showErr(msg){
-      errBox.style.display = "block";
-      errBox.textContent = msg;
-      jsBadge.textContent = "JS: ERROR";
-      jsBadge.style.background = "rgba(239,68,68,.16)";
-      jsBadge.style.borderColor = "rgba(239,68,68,.35)";
+    const VALID_STRANDS = ["Number","Geometry","Measurement","Statistics"];
+    const VALID_PROCESSES = ["Knowing","Applying","Reasoning"];
+  </script>
+
+  <!-- ✅ Video list lives on window.videos (no duplicate const videos anymore) -->
+  <script>
+    window.videos = [
+      {
+        "title":"VAT Inclusive Price → Original Price (12.5% Tax)",
+        "desc":"Reverse VAT problem. $720 is the VAT inclusive price. Uses bar model and fraction reasoning (12.5% = 1/8) to find the original price before tax.",
+        "topic":"Measurement",
+        "subtopic":"Money",
+        "keywords":[
+          "VAT","value added tax","12.5 percent","12.5%","one eighth","1/8",
+          "inclusive price","exclusive price","before tax","after tax","reverse VAT",
+          "fraction method","bar model","keep change flip","reciprocal","720 dinner","tax word problem"
+        ],
+        "src":"https://app.screencast.com/0XKGa9Fux4RyT/e",
+        "thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Taxes.gif",
+        "answerKeys":["640","$640","640.00","$640.00"],
+        "answerHint":"Original price before VAT",
+        "strand":"Measurement",
+        "objGroup":"Money",
+        "process":"Reasoning"
+      },
+
+      /* ✅ NEW VIDEO ADDED */
+      {
+        "title":"Ribbon Problem: 8.4 m, Use 1/4, Cut into 70 cm Bows",
+        "desc":"Convert meters to centimeters, find 1/4 of 840 cm used for gifts, subtract to get 630 cm, then divide by 70 cm to find how many bows were made.",
+        "topic":"Measurement",
+        "subtopic":"Linear Measure",
+        "keywords":[
+          "ribbon","bows","meters to centimeters","convert units","metric conversion",
+          "one quarter","1/4","quarter of","fraction of a quantity",
+          "part whole","part-whole","whole and parts",
+          "840 cm","210 cm","630 cm","70 cm","division","how many seventies",
+          "length","measurement","word problem"
+        ],
+        "src":"https://app.screencast.com/0pgNqTPQ1S6sd/e",
+        "answerKeys":["9","9 bows","nine","nine bows"],
+        "answerHint":"How many bows were made?",
+        "strand":"Measurement",
+        "objGroup":"Linear Measure",
+        "process":"Reasoning"
+      },
+
+      {"title":"Patterns 1","desc":"Pattern Rules","topic":"Number","subtopic":"Number Relationships","keywords":["patterns","pattern rule","sequence","number patterns","term","next number"],"src":"https://app.screencast.com/L9SNA5xVSUun5/e","strand":"Number","objGroup":"Number Patterns","process":"Reasoning"},
+      {"title":"Excess & Shortage → Find Original Amount (Notebooks)","desc":"Excess and shortage problem. Faye is $16 short to buy 6 notebooks, but after buying 4 notebooks she has $2.10 left. Uses bar model comparison to find the cost per notebook, then her original amount of money.","topic":"Number","subtopic":"Problem Solving (Excess & Shortage)","keywords":["excess and shortage","excess","shortage","need more money","not enough money","have extra money","left over","comparison","two scenarios","bar model","draw a diagram","unknown amount","unit price","cost per notebook","6 notebooks","4 notebooks","difference method","short 16 dollars","left 2.10","find how much money she had at first","money word problem"],"src":"https://app.screencast.com/eiVu8rFJvfLJM/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Excess%20and%20Shortage.gif","answerKeys":["38.30","$38.30","38.3","$38.3","38.30","38.30 dollars","$38.30 dollars"],"answerHint":"Money Faye had at first","strand":"Number","objGroup":"Problem Solving","process":"Reasoning"},
+      {"title":"Excess and Shortage 2","desc":"Money word problem using comparison and bar model","topic":"Number","subtopic":"Number Relationships","keywords":["excess","shortage","difference","comparison","bar model","money","word problem"],"src":"https://app.screencast.com/PKvk0nOeySQb4/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Excess%20and%20Shortage%203.gif","strand":"Number","objGroup":"Problem Solving","process":"Reasoning"},
+      {"title":"Excess and Shortage 3","desc":"Money word problem using comparison and bar model","topic":"Number","subtopic":"Number Relationships","keywords":["excess","shortage","difference","comparison","bar model","money","word problem"],"src":"https://app.screencast.com/zxd6ahkkNJ5Wq/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Excess%20and%20Shortage%203.gif","strand":"Number","objGroup":"Problem Solving","process":"Reasoning"},
+      {"title":"Guess & Check: Apples and Pears (Equal Numbers, $40 More)","desc":"Difference comparison + equal groups. Pears cost $8 each; apples total is $40 more than pears total. Use guess & check to find the number of each and total fruits.","topic":"Number","subtopic":"Number Relationships","keywords":["guess and check","trial and improvement","difference comparison","equal numbers","equal groups","apples and pears","total cost","280","40 more","pears 8 each","word problem","systematic list","comparison"],"src":"https://app.screencast.com/Mts3EOjXRxEFC/e","strand":"Number","objGroup":"Problem Solving","process":"Reasoning"},
+      {"title":"Simple Interest 1","desc":"Money word problem involving simple interest","topic":"Number","subtopic":"Number Relationships","keywords":["simple interest","interest","rate","principal","time","money","percent","percentage"],"src":"https://app.screencast.com/FrIk51PbaIkKB/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Simple%20%20Interes.gif","strand":"Measurement","objGroup":"Money","process":"Reasoning"},
+      {"title":"Solving Unknowns 1","desc":"Associative property and word problem (unknowns in equations)","topic":"Number","subtopic":"Algebraic Thinking (Unknowns)","keywords":["unknown","equation","algebra","associative property","find the value","word problem"],"src":"https://app.screencast.com/r7SqpNtP30aki/e","strand":"Number","objGroup":"Number Relationships (Algebraic Thinking)","process":"Applying"},
+      {"title":"Solving Unknowns 2","desc":"Associative property and word problem (unknowns in equations)","topic":"Number","subtopic":"Algebraic Thinking (Unknowns)","keywords":["unknown","equation","algebra","associative property","find the value","word problem"],"src":"https://app.screencast.com/Uhj36MnR6m0ZW/e","strand":"Number","objGroup":"Number Relationships (Algebraic Thinking)","process":"Applying"},
+      {"title":"Solving Unknowns 3","desc":"Systematic Reasoning word problem (unknowns in equations)","topic":"Number","subtopic":"Algebraic Thinking (Unknowns)","keywords":["unknown","equation","algebra","systematic reasoning","find the value","word problem"],"src":"https://app.screencast.com/3WtPNsHWnKTXH/e","strand":"Number","objGroup":"Number Relationships (Algebraic Thinking)","process":"Reasoning"},
+      {"title":"Unequal Sharing Examples 1","desc":"Unequal sharing (division) in word problems","topic":"Number","subtopic":"Ratio & Proportion","keywords":["unequal sharing","division","ratio","proportion","sharing","word problem"],"src":"https://app.screencast.com/4pVuO4MqLRjug/e","strand":"Number","objGroup":"Ratio & Proportion","process":"Reasoning"},
+      {"title":"Unequal Sharing Examples 2","desc":"Unequal sharing (division) in word problems","topic":"Number","subtopic":"Ratio & Proportion","keywords":["unequal sharing","division","ratio","proportion","sharing","word problem"],"src":"https://app.screencast.com/pldleZlQXVmMI/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif","strand":"Number","objGroup":"Ratio & Proportion","process":"Reasoning"},
+      {"title":"Unequal Sharing Examples 3","desc":"Unequal sharing (division) in word problems","topic":"Number","subtopic":"Ratio & Proportion","keywords":["unequal sharing","division","ratio","proportion","sharing","word problem"],"src":"https://app.screencast.com/BE1LMn07OxX4K/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif","strand":"Number","objGroup":"Ratio & Proportion","process":"Reasoning"},
+      {"title":"Unequal Sharing Examples 4","desc":"Unequal sharing (division) in word problems","topic":"Number","subtopic":"Ratio & Proportion","keywords":["unequal sharing","division","ratio","proportion","sharing","word problem"],"src":"https://app.screencast.com/ISts8pXbvQJcL/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif","strand":"Number","objGroup":"Ratio & Proportion","process":"Reasoning"},
+      {"title":"Unequal Sharing Examples 5","desc":"Unequal sharing (division) in word problems","topic":"Number","subtopic":"Ratio & Proportion","keywords":["unequal sharing","division","ratio","proportion","sharing","word problem"],"src":"https://app.screencast.com/9i2VYDKzstNnO/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif","strand":"Number","objGroup":"Ratio & Proportion","process":"Reasoning"},
+      {"title":"Unequal Sharing: Twice as Much & $200 More ($1,100 Total)","desc":"Mixed comparison word problem. Lauren got twice as much as Alice, and Dave got $200 more than Alice. Uses pattern blocks and bar model to solve.","topic":"Number","subtopic":"Ratio & Proportion","keywords":["unequal sharing","twice as much","200 more","difference comparison","multiplicative comparison","pattern blocks","bar model","ratio reasoning","1100 shared","Alice Lauren Dave","working backwards"],"src":"https://app.screencast.com/IEadaQelaVJqe/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif","strand":"Number","objGroup":"Ratio & Proportion","process":"Reasoning"},
+      {"title":"Unequal Sharing: Twice as Much & 1 Meter More (16m Total)","desc":"Mixed comparison problem. Tony used twice as much cloth as Andy, and Ali used 1 meter more than Tony. Solved using bar model and guess & check.","topic":"Number","subtopic":"Ratio & Proportion","keywords":["unequal sharing","twice as much","1 meter more","cloth problem","pattern blocks","bar model","guess and check","16 meters total","Tony Andy Ali"],"src":"https://app.screencast.com/QFWgkLwvmY84k/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif","strand":"Number","objGroup":"Ratio & Proportion","process":"Reasoning"},
+      {"title":"Skill: Dividing Decimals","desc":"Dividing decimals, decimal divisors, worked examples","topic":"Number","subtopic":"Decimals","keywords":["decimals","divide decimals","decimal divisor","quotient","long division"],"src":"https://app.screencast.com/fgjnwgtkQkT4h/e","strand":"Number","objGroup":"Decimals","process":"Applying"},
+      {"title":"Skill: Adding Fractions","desc":"Adding fractions, regrouping, worked examples","topic":"Number","subtopic":"Fractions","keywords":["fractions","add fractions","mixed numbers","regrouping","common denominator"],"src":"https://app.screencast.com/wji4KJz7nu4S9/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Skills%20-%20%20Adding%20Fractions.gif","strand":"Number","objGroup":"Fractions","process":"Applying"},
+      {"title":"Skill: Subtracting Fractions","desc":"Subtracting fractions, regrouping, borrowing, worked examples","topic":"Number","subtopic":"Fractions","keywords":["fractions","subtract fractions","mixed numbers","borrowing","regrouping","common denominator"],"src":"https://app.screencast.com/RQ3nwP06DwwZs/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Skills%20-%20%20Subtracgin%20Fractions.gif","strand":"Number","objGroup":"Fractions","process":"Applying"},
+      {"title":"Vedic Multiplication Method","desc":"Multiplication method / shortcut (long multiplication support)","topic":"Number","subtopic":"Whole Number Operations","keywords":["multiplication","vedic multiplication","shortcut","long multiplication","times tables"],"src":"https://app.screencast.com/40hCwuhn2T8h8/e","strand":"Number","objGroup":"Whole Numbers & Operations","process":"Applying"},
+      {"title":"Explicit Trade Division","desc":"Division using trades / place value method","topic":"Number","subtopic":"Whole Number Operations","keywords":["division","place value","trading","regrouping","quotient","long division"],"src":"https://app.screencast.com/qPYW9MUgcMFN7/e","strand":"Number","objGroup":"Whole Numbers & Operations","process":"Applying"},
+      {"title":"Estimation Strategy","desc":"Front-end / rounding strategy for word problems","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["estimation","rounding","front end estimation","approximate","word problems"],"src":"https://app.screencast.com/dNH69Z0TkBDLP/e","strand":"Number","objGroup":"Problem Solving","process":"Applying"},
+      {"title":"Part-Whole Models","desc":"Part-whole model structures supporting operations and problem solving","topic":"Number","subtopic":"Number Relationships","keywords":["part whole","bar model","number bonds","total","parts","model drawing"],"src":"https://app.screencast.com/Gm1GGxwF3YlfX/e","strand":"Number","objGroup":"Number Relationships (Algebraic Thinking)","process":"Knowing"},
+      {"title":"Time 1","desc":"Slow and fast times / adding and subtracting time / time lines","topic":"Measurement","subtopic":"Time","keywords":["time","elapsed time","timeline","hours","minutes","subtract time","add time"],"src":"https://app.screencast.com/g1LIovUp0MhPT/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png","strand":"Measurement","objGroup":"Time","process":"Applying"},
+      {"title":"Time 2","desc":"Time lines / adding and subtracting time","topic":"Measurement","subtopic":"Time","keywords":["time","elapsed time","timeline","hours","minutes","subtract time","add time"],"src":"https://app.screencast.com/GQ1uMHhtExpYV/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png","strand":"Measurement","objGroup":"Time","process":"Applying"},
+      {"title":"Time 3","desc":"Time lines / adding and subtracting time","topic":"Measurement","subtopic":"Time","keywords":["time","elapsed time","timeline","hours","minutes","subtract time","add time"],"src":"https://app.screencast.com/GQ1uMHhtExpYV/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png","strand":"Measurement","objGroup":"Time","process":"Applying"},
+      {"title":"Time 4","desc":"Time lines / adding and subtracting time / time elapsed / converting minutes to hours","topic":"Measurement","subtopic":"Time","keywords":["time","elapsed time","timeline","convert minutes to hours","hours","minutes"],"src":"https://app.screencast.com/UogxULyDMnkpP/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png","strand":"Measurement","objGroup":"Time","process":"Applying"},
+      {"title":"Time 5","desc":"Time lines / adding and subtracting time / time elapsed / converting minutes to hours","topic":"Measurement","subtopic":"Time","keywords":["time","elapsed time","timeline","convert minutes to hours","hours","minutes"],"src":"https://app.screencast.com/1IabykTRRUZWH/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png","strand":"Measurement","objGroup":"Time","process":"Applying"},
+      {"title":"Best Buy 1","desc":"Money word problem using best-buy / unit cost reasoning","topic":"Measurement","subtopic":"Money","keywords":["best buy","unit cost","value for money","comparison","cheaper","price per","rate"],"src":"https://app.screencast.com/O8VHbNFTUfkHF/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Best%20Buy.gif","strand":"Measurement","objGroup":"Money","process":"Reasoning"},
+      {"title":"Best Buy 2","desc":"Money word problem using best-buy / unit cost reasoning","topic":"Measurement","subtopic":"Money","keywords":["best buy","unit cost","value for money","comparison","cheaper","price per","rate"],"src":"https://app.screencast.com/askbx8UZPRujS/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Best%20Buy.gif","strand":"Measurement","objGroup":"Money","process":"Reasoning"},
+      {"title":"Perimeter of Rectilinear Shapes 1","desc":"Perimeter of compound rectilinear shapes using grids","topic":"Measurement","subtopic":"Length & Perimeter","keywords":["perimeter","rectilinear","compound shapes","grid","length","measure"],"src":"https://app.screencast.com/bNf8KQ2GFKg7h/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Perimeter%20and%20Length.gif","strand":"Measurement","objGroup":"Perimeter","process":"Applying"},
+      {"title":"Perimeter of Rectilinear Shapes 2","desc":"Perimeter of compound rectilinear shapes using grids","topic":"Measurement","subtopic":"Length & Perimeter","keywords":["perimeter","rectilinear","compound shapes","grid","length","measure"],"src":"https://app.screencast.com/oRrr65bID5IPB/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Perimeter%20and%20Length.gif","strand":"Measurement","objGroup":"Perimeter","process":"Applying"},
+      {"title":"Common Intervals 1","desc":"Finding missing lengths / common intervals in perimeter problems","topic":"Measurement","subtopic":"Length & Perimeter","keywords":["common intervals","missing length","perimeter","difference","subtract","rectilinear"],"src":"https://app.screencast.com/SrNunpF9SaL6R/e","thumb":"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Perimeter%20and%20Length.gif","strand":"Measurement","objGroup":"Perimeter","process":"Reasoning"},
+      {"title":"Large Area Divided by Small Areas","desc":"Area / tiling area reasoning (compound shapes and grids)","topic":"Measurement","subtopic":"Area","keywords":["area","tiling","compound shapes","grid","square units","divide area"],"src":"https://app.screencast.com/RKeVQPZNJewkm/e","strand":"Measurement","objGroup":"Area","process":"Reasoning"},
+      {"title":"Linear Measurement","desc":"Length / guess and check / solving unknown amounts","topic":"Measurement","subtopic":"Length & Perimeter","keywords":["length","linear measurement","guess and check","unknown","measure","cm","m"],"src":"https://app.screencast.com/VdkrCEpZ0Reig/e","strand":"Measurement","objGroup":"Linear Measure","process":"Applying"},
+      {"title":"Statistics 1","desc":"Average (mean) in word problems","topic":"Data Handling","subtopic":"Mean (Average)","keywords":["mean","average","data","statistics","word problem","total divided by"],"src":"https://app.screencast.com/Qn49tL4r33sGz/e","strand":"Statistics","objGroup":"Mode & Mean","process":"Applying"},
+      {"title":"Statistics 2","desc":"Average (mean) in word problems","topic":"Data Handling","subtopic":"Mean (Average)","keywords":["mean","average","data","statistics","word problem","total divided by"],"src":"https://app.screencast.com/57YRm36Gc6eYV/e","strand":"Statistics","objGroup":"Mode & Mean","process":"Applying"},
+      {"title":"Statistics 3","desc":"Suitable Scales","topic":"Data Handling","subtopic":"Graphs","keywords":["graphs","scale","bar graph","line graph","intervals","data handling"],"src":"https://app.screencast.com/7uMoAvJAhiooQ/e","strand":"Statistics","objGroup":"Data Representation","process":"Applying"},
+      {"title":"Corrections: Practice Sheet 3","desc":"Corrections practice sheet 3 (worked examples / homework review)","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["corrections","practice","review","worked examples","homework"],"src":"https://app.screencast.com/D4JbxxISjlWDE/e","strand":"Number","objGroup":"Problem Solving","process":"Applying"},
+      {"title":"Corrections Practice Sheet 4","desc":"Corrections practice (worked examples and review)","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["corrections","practice","review","worked examples","homework"],"src":"https://app.screencast.com/CsuSXcmxJ1sYr/e","strand":"Number","objGroup":"Problem Solving","process":"Applying"},
+      {"title":"Corrections: Practice Sheet 5","desc":"Corrections practice sheet 5 (worked examples / homework review)","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["corrections","practice","review","worked examples","homework"],"src":"https://app.screencast.com/QbS2VtEPP2jyM/e","strand":"Number","objGroup":"Problem Solving","process":"Applying"},
+      {"title":"Corrections: Practice Sheet 7","desc":"Corrections practice sheet 7 (worked examples / homework review)","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["corrections","practice","review","worked examples","homework"],"src":"https://app.screencast.com/jV16CDST0EchD/e","strand":"Number","objGroup":"Problem Solving","process":"Applying"},
+      {"title":"Lesson Video (Screencast)","desc":"General lesson / review video","topic":"Number","subtopic":"Problem Solving Strategies","keywords":["lesson","review","revision","worked examples"],"src":"https://app.screencast.com/Do4qujmw2L9oy/e","strand":"Number","objGroup":"Problem Solving","process":"Knowing"}
+    ];
+  </script>
+
+  <script>
+    // ✅ Use the injected videos safely (NO duplicate const)
+    let videos = (window.videos || []);
+
+    function seaTermsFor(v){
+      const s = SEA_TAXONOMY[v.strand];
+      if (!s || !s.objGroups) return [];
+      return (s.objGroups[v.objGroup] || []).slice();
     }
 
-    window.addEventListener("error", (e) => {
-      showErr("Script error:\n" + (e.message || "Unknown") + "\n\nFile: " + (e.filename || "?") + "\nLine: " + (e.lineno || "?"));
-    });
-    window.addEventListener("unhandledrejection", (e) => {
-      showErr("Promise rejection:\n" + (e.reason ? (e.reason.stack || e.reason) : "Unknown"));
-    });
+    function autoKeywords(v){
+      const raw = [
+        v.title, v.desc, v.strand, v.objGroup, v.process,
+        v.topic, v.subtopic,
+        ...(Array.isArray(v.keywords) ? v.keywords : []),
+        ...(Array.isArray(v.answerKeys) ? v.answerKeys : []),
+        v.answerHint, v.answer, v.answerKey
+      ].filter(Boolean).join(" ");
 
-    try{
-      jsBadge.textContent = "JS: running…";
-
-      const VALID_STRANDS = ["Number","Geometry","Measurement","Statistics"];
-      const VALID_PROCESSES = ["Knowing","Applying","Reasoning"];
-
-      const SEA_TAXONOMY = {
-        "Number": { objGroups: { "Problem Solving": ["bar model","comparison","guess and check","working backwards"] } },
-        "Measurement": {
-          objGroups: {
-            "Linear Measure":["length","linear measurement","cm","m","mm","km","measure","convert units"],
-            "Money":["money","dollars","vat","tax"]
-          }
-        },
-        "Geometry": { objGroups: {} },
-        "Statistics": { objGroups: { "Mode & Mean":["mean","average","mode"] } }
-      };
-
-      // ✅ Minimum dataset (includes your VAT + Ribbon so you can confirm it works)
-      let videos = [
-        {"title":"VAT Inclusive Price → Original Price (12.5% Tax)","desc":"Reverse VAT: $720 is VAT inclusive. 12.5% = 1/8.","topic":"Measurement","subtopic":"Money","keywords":["VAT","12.5%","1/8","inclusive price","exclusive price"],"src":"https://app.screencast.com/0XKGa9Fux4RyT/e","answerKeys":["640","$640","640.00","$640.00"],"answerHint":"Original price before VAT","strand":"Measurement","objGroup":"Money","process":"Reasoning"},
-        {"title":"Ribbon Problem: 8.4 m, Use 1/4, Cut into 70 cm Bows","desc":"Convert meters to centimeters, subtract 1/4 used, then divide by 70 cm.","topic":"Measurement","subtopic":"Linear Measure","keywords":["ribbon","bows","meters to centimeters","convert units","1/4","70 cm"],"src":"https://app.screencast.com/0pgNqTPQ1S6sd/e","answerKeys":["9","9 bows","nine","nine bows"],"answerHint":"How many bows were made?","strand":"Measurement","objGroup":"Linear Measure","process":"Reasoning"},
-      ];
-
-      function seaTermsFor(v){
-        const s = SEA_TAXONOMY[v.strand];
-        if (!s || !s.objGroups) return [];
-        return (s.objGroups[v.objGroup] || []).slice();
-      }
-      function autoKeywords(v){
-        const raw = [
-          v.title, v.desc, v.strand, v.objGroup, v.process,
-          v.topic, v.subtopic,
-          ...(Array.isArray(v.keywords) ? v.keywords : []),
-          ...(Array.isArray(v.answerKeys) ? v.answerKeys : []),
-          v.answerHint
-        ].filter(Boolean).join(" ");
-
-        return Array.from(new Set(
-          raw.toLowerCase()
-            .replace(/[^a-z0-9\s&()%$=.,-]/g," ")
-            .split(/\s+/)
-            .filter(w => w.length >= 2)
-        ));
-      }
-      function normalizeVideo(v){
-        const out = { ...v };
-
-        if (out.src) {
-          out.src = String(out.src).trim();
-          if (!out.src.endsWith("/e")) out.src = out.src.replace(/\/?$/,"/e");
-        }
-        if (!out.strand || !VALID_STRANDS.includes(out.strand)) out.strand = "Number";
-        if (!out.process || !VALID_PROCESSES.includes(out.process)) out.process = "Applying";
-        out.keywords = Array.isArray(out.keywords) ? out.keywords : [];
-
-        out._sea = seaTermsFor(out);
-        out._auto = autoKeywords(out);
-        return out;
-      }
-      videos = videos.map(normalizeVideo);
-
-      const STRAND_COLORS = {
-        "Number":      { bg:"rgba(59,130,246,.18)",  border:"rgba(59,130,246,.35)" },
-        "Measurement": { bg:"rgba(34,197,94,.18)",   border:"rgba(34,197,94,.35)" },
-        "Geometry":    { bg:"rgba(168,85,247,.18)",  border:"rgba(168,85,247,.35)" },
-        "Statistics":  { bg:"rgba(251,146,60,.18)",  border:"rgba(251,146,60,.35)" }
-      };
-      function applyStrandColor(el, strand){
-        const c = STRAND_COLORS[strand];
-        if (!c) return;
-        el.style.background = c.bg;
-        el.style.borderColor = c.border;
-      }
-
-      // DOM
-      const split         = document.getElementById("split");
-      const divider       = document.getElementById("divider");
-      const featuredBox   = document.getElementById("featuredBox");
-      const stage         = document.getElementById("featuredStage");
-      const listEl        = document.getElementById("videoList");
-      const searchInput   = document.getElementById("searchInput");
-      const countLabel    = document.getElementById("countLabel");
-      const sidebar       = document.getElementById("sidebar");
-
-      const strandSelect  = document.getElementById("strandSelect");
-      const objSelect     = document.getElementById("objSelect");
-      const objRow        = document.getElementById("objRow");
-      const processSelect = document.getElementById("processSelect");
-
-      const fTitle    = document.getElementById("fTitle");
-      const fDesc     = document.getElementById("fDesc");
-      const fStrand   = document.getElementById("fStrand");
-      const fObjGroup = document.getElementById("fObjGroup");
-      const fProcess  = document.getElementById("fProcess");
-
-      const answerLabel = document.getElementById("answerLabel");
-      const answerInput = document.getElementById("answerInput");
-      const checkAnswerBtn = document.getElementById("checkAnswerBtn");
-      const revealAnswerBtn = document.getElementById("revealAnswerBtn");
-      const answerMsg = document.getElementById("answerMsg");
-
-      const norm = s => (s || "").toLowerCase().trim();
-
-      function makeIframe(src){
-        const iframe = document.createElement("iframe");
-        iframe.src = src;
-        iframe.setAttribute("scrolling","no");
-        iframe.setAttribute("frameborder","0");
-        iframe.setAttribute("allowfullscreen","true");
-        return iframe;
-      }
-      function makeSlide(src, extraClass=""){
-        const slide = document.createElement("div");
-        slide.className = `slide ${extraClass}`.trim();
-        slide.appendChild(makeIframe(src));
-        return slide;
-      }
-
-      let featuredIdx = 0;
-      let isAnimating = false;
-
-      function normalizeForCompare(s){
-        return (s || "")
+      return Array.from(new Set(
+        raw
           .toLowerCase()
-          .replace(/\$/g,"")
-          .replace(/,/g," ")
-          .replace(/\band\b/g," ")
-          .replace(/[:=]/g," ")
-          .replace(/\b(dollars?|ttd)\b/g,"")
-          .replace(/\s+/g," ")
-          .trim();
-      }
-      function getAnswerVariants(v){
-        if (!v || !Array.isArray(v.answerKeys) || v.answerKeys.length === 0) return null;
-        const raw = v.answerKeys.map(x => String(x));
-        const normed = raw.map(x => normalizeForCompare(x));
-        return { raw, norm: normed };
-      }
-      function setAnswerUI(){
-        const v = videos[featuredIdx];
-        const variants = getAnswerVariants(v);
+          .replace(/[^a-z0-9\s&()%$=.,-]/g," ")
+          .split(/\s+/)
+          .filter(w => w.length >= 2)
+      ));
+    }
 
-        answerLabel.textContent = v.answerHint ? `Answer • ${v.answerHint}` : "Answer";
-        answerMsg.textContent = "";
+    function normalizeVideo(v){
+      const out = { ...v };
+
+      // Force /e at end of Screencast src
+      if (out.src) {
+        out.src = String(out.src).trim();
+        if (!out.src.endsWith("/e")) out.src = out.src.replace(/\/?$/,"/e");
+      }
+
+      // Normalize "Data Handling" => "Statistics" (SEA strand wording)
+      if ((out.topic || "").trim().toLowerCase() === "data handling"){
+        out.topic = "Statistics";
+      }
+
+      if (!out.strand || !VALID_STRANDS.includes(out.strand)){
+        out.strand = VALID_STRANDS.includes(out.topic) ? out.topic : "Number";
+      }
+
+      if (!out.process || !VALID_PROCESSES.includes(out.process)){
+        out.process = "Applying";
+      }
+
+      // Keywords
+      out.keywords = Array.isArray(out.keywords) ? out.keywords : (out.keywords ? [String(out.keywords)] : []);
+
+      // ✅ Answers normalize to answerKeys array
+      let keys = null;
+      if (Array.isArray(out.answerKeys)) keys = out.answerKeys;
+      else if (typeof out.answerKeys === "string" && out.answerKeys.trim()) keys = [out.answerKeys.trim()];
+      else if (typeof out.answer === "string" && out.answer.trim()) keys = [out.answer.trim()];
+      else if (typeof out.answerKey === "string" && out.answerKey.trim()) keys = [out.answerKey.trim()];
+      out.answerKeys = keys ? keys.map(x => String(x).trim()).filter(Boolean) : null;
+
+      // SEA objective-language terms injected
+      out._sea = seaTermsFor(out);
+
+      // Auto tokens for keyword search
+      out._auto = autoKeywords(out);
+
+      return out;
+    }
+
+    videos = videos.map(normalizeVideo);
+
+    const STRAND_COLORS = {
+      "Number":      { bg:"rgba(59,130,246,.18)",  border:"rgba(59,130,246,.35)" },
+      "Measurement": { bg:"rgba(34,197,94,.18)",   border:"rgba(34,197,94,.35)" },
+      "Geometry":    { bg:"rgba(168,85,247,.18)",  border:"rgba(168,85,247,.35)" },
+      "Statistics":  { bg:"rgba(251,146,60,.18)",  border:"rgba(251,146,60,.35)" }
+    };
+    function applyStrandColor(el, strand){
+      const c = STRAND_COLORS[strand];
+      if (!c) return;
+      el.style.background = c.bg;
+      el.style.borderColor = c.border;
+    }
+
+    const split         = document.getElementById("split");
+    const divider       = document.getElementById("divider");
+    const featuredBox   = document.getElementById("featuredBox");
+    const stage         = document.getElementById("featuredStage");
+    const listEl        = document.getElementById("videoList");
+    const searchInput   = document.getElementById("searchInput");
+    const countLabel    = document.getElementById("countLabel");
+    const sidebar       = document.getElementById("sidebar");
+
+    const strandSelect  = document.getElementById("strandSelect");
+    const objSelect     = document.getElementById("objSelect");
+    const objRow        = document.getElementById("objRow");
+    const processSelect = document.getElementById("processSelect");
+
+    const fTitle    = document.getElementById("fTitle");
+    const fDesc     = document.getElementById("fDesc");
+    const fStrand   = document.getElementById("fStrand");
+    const fObjGroup = document.getElementById("fObjGroup");
+    const fProcess  = document.getElementById("fProcess");
+
+    // Answer UI
+    const answerLabel = document.getElementById("answerLabel");
+    const answerInput = document.getElementById("answerInput");
+    const checkAnswerBtn = document.getElementById("checkAnswerBtn");
+    const revealAnswerBtn = document.getElementById("revealAnswerBtn");
+    const answerMsg = document.getElementById("answerMsg");
+
+    const norm = s => (s || "").toLowerCase().trim();
+
+    function makeIframe(src){
+      const iframe = document.createElement("iframe");
+      iframe.src = src;
+      iframe.setAttribute("scrolling","no");
+      iframe.setAttribute("frameborder","0");
+      iframe.setAttribute("allowfullscreen","true");
+      return iframe;
+    }
+
+    function makeSlide(src, extraClass=""){
+      const slide = document.createElement("div");
+      slide.className = `slide ${extraClass}`.trim();
+      slide.appendChild(makeIframe(src));
+      return slide;
+    }
+
+    let featuredIdx = 0;
+    let isAnimating = false;
+
+    function normalizeForCompare(s){
+      return (s || "")
+        .toLowerCase()
+        .replace(/\$/g,"")
+        .replace(/,/g," ")
+        .replace(/\band\b/g," ")
+        .replace(/[:=]/g," ")
+        .replace(/\b(dollars?|ttd)\b/g,"")
+        .replace(/\b(meters?|metres?|m)\b/g,"")
+        .replace(/\s+/g," ")
+        .trim();
+    }
+
+    function getAnswerVariants(v){
+      if (!v || !Array.isArray(v.answerKeys) || v.answerKeys.length === 0) return null;
+      const raw = v.answerKeys.map(x => String(x));
+      const normed = raw.map(x => normalizeForCompare(x));
+      return { raw, norm: normed };
+    }
+
+    function setAnswerUI(){
+      const v = videos[featuredIdx];
+      const variants = getAnswerVariants(v);
+
+      answerLabel.textContent = v.answerHint ? `Answer • ${v.answerHint}` : "Answer";
+      answerMsg.textContent = "";
+      revealAnswerBtn.style.display = "none";
+      answerInput.value = "";
+
+      if (!variants){
+        answerInput.disabled = true;
+        checkAnswerBtn.disabled = true;
+        answerInput.placeholder = "Answer not added for this video yet";
+        return;
+      }
+
+      answerInput.disabled = false;
+      checkAnswerBtn.disabled = false;
+      answerInput.placeholder = "Type your answer (any reasonable format)...";
+    }
+
+    checkAnswerBtn.addEventListener("click", () => {
+      const v = videos[featuredIdx];
+      const variants = getAnswerVariants(v);
+      if (!variants) return;
+
+      const user = normalizeForCompare(answerInput.value);
+      if (!user){
+        answerMsg.textContent = "Type an answer first.";
         revealAnswerBtn.style.display = "none";
-        answerInput.value = "";
-
-        if (!variants){
-          answerInput.disabled = true;
-          checkAnswerBtn.disabled = true;
-          answerInput.placeholder = "Answer not added for this video yet";
-          return;
-        }
-        answerInput.disabled = false;
-        checkAnswerBtn.disabled = false;
-        answerInput.placeholder = "Type your answer…";
+        return;
       }
 
-      checkAnswerBtn.addEventListener("click", () => {
-        const v = videos[featuredIdx];
-        const variants = getAnswerVariants(v);
-        if (!variants) return;
+      const ok = variants.norm.some(k => k === user);
 
-        const user = normalizeForCompare(answerInput.value);
-        if (!user){
-          answerMsg.textContent = "Type an answer first.";
-          revealAnswerBtn.style.display = "none";
-          return;
-        }
-        const ok = variants.norm.some(k => k === user);
-        if (ok){
-          answerMsg.textContent = "✅ Correct!";
-          revealAnswerBtn.style.display = "none";
-        } else {
-          answerMsg.textContent = "❌ Not quite. Click Reveal.";
-          revealAnswerBtn.style.display = "";
-        }
-      });
-
-      revealAnswerBtn.addEventListener("click", () => {
-        const v = videos[featuredIdx];
-        if (!v.answerKeys || !v.answerKeys.length) return;
-        answerMsg.textContent = `✅ Answer: ${v.answerKeys[0]}`;
+      if (ok){
+        answerMsg.textContent = "✅ Correct!";
         revealAnswerBtn.style.display = "none";
-      });
-
-      function updateFeaturedMeta(){
-        const v = videos[featuredIdx];
-        fTitle.textContent = v.title || "—";
-        fDesc.textContent  = v.desc  || "—";
-        fStrand.textContent = v.strand || "Strand";
-        fObjGroup.textContent = v.objGroup || "Objective Group";
-        fProcess.textContent = v.process || "Process";
-        fStrand.style.background = "rgba(255,255,255,.06)";
-        fStrand.style.borderColor = "rgba(255,255,255,.14)";
-        applyStrandColor(fStrand, v.strand);
-        setAnswerUI();
+      } else {
+        answerMsg.textContent = "❌ Not quite. Watch the video (or click Reveal).";
+        revealAnswerBtn.style.display = "";
       }
+    });
 
-      function setFeaturedInstant(idx){
-        featuredIdx = idx;
+    revealAnswerBtn.addEventListener("click", () => {
+      const v = videos[featuredIdx];
+      if (!v.answerKeys || !v.answerKeys.length) return;
+      answerMsg.textContent = `✅ Answer: ${v.answerKeys[0]}`;
+      revealAnswerBtn.style.display = "none";
+    });
+
+    answerInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); checkAnswerBtn.click(); }
+    });
+
+    function updateFeaturedMeta(){
+      const v = videos[featuredIdx];
+      fTitle.textContent = v.title || "—";
+      fDesc.textContent  = v.desc  || "—";
+
+      fStrand.textContent = v.strand || "Strand";
+      fObjGroup.textContent = v.objGroup || "Objective Group";
+      fProcess.textContent = v.process || "Process";
+
+      fStrand.style.background = "rgba(255,255,255,.06)";
+      fStrand.style.borderColor = "rgba(255,255,255,.14)";
+      applyStrandColor(fStrand, v.strand);
+
+      setAnswerUI();
+    }
+
+    function setFeaturedInstant(idx){
+      featuredIdx = idx;
+      stage.innerHTML = "";
+      stage.appendChild(makeSlide(videos[featuredIdx].src));
+      updateFeaturedMeta();
+    }
+
+    function pushSwapToFeatured(clickedIdx){
+      if (isAnimating || clickedIdx === featuredIdx) return;
+
+      const oldSrc = videos[featuredIdx].src;
+      const newSrc = videos[clickedIdx].src;
+
+      const temp = videos[featuredIdx];
+      videos[featuredIdx] = videos[clickedIdx];
+      videos[clickedIdx] = temp;
+
+      isAnimating = true;
+      const duration = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 520;
+
+      stage.innerHTML = "";
+      const oldSlide = makeSlide(oldSrc, "anim");
+      const newSlide = makeSlide(newSrc, "fromRight");
+      stage.appendChild(oldSlide);
+      stage.appendChild(newSlide);
+
+      void newSlide.offsetWidth;
+
+      newSlide.classList.add("anim");
+      oldSlide.classList.add("toLeft");
+      newSlide.classList.remove("fromRight");
+
+      setTimeout(() => {
         stage.innerHTML = "";
         stage.appendChild(makeSlide(videos[featuredIdx].src));
+        isAnimating = false;
         updateFeaturedMeta();
-      }
+        buildStrandOptions();
+        buildObjOptions();
+        buildList();
+        syncSidebarHeight();
+      }, duration + 30);
+    }
 
-      function pushSwapToFeatured(clickedIdx){
-        if (isAnimating || clickedIdx === featuredIdx) return;
+    function thumbUrlFor(video){
+      if (video.thumb) return video.thumb;
+      const text = encodeURIComponent(video.title || "Video");
+      return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+        <svg xmlns='http://www.w3.org/2000/svg' width='640' height='360'>
+          <defs>
+            <linearGradient id='g' x1='0' x2='1' y1='0' y2='1'>
+              <stop offset='0' stop-color='#162a55'/>
+              <stop offset='1' stop-color='#0b1220'/>
+            </linearGradient>
+          </defs>
+          <rect width='100%' height='100%' fill='url(#g)'/>
+          <circle cx='320' cy='180' r='46' fill='rgba(255,255,255,0.12)'/>
+          <polygon points='308,155 308,205 352,180' fill='rgba(255,255,255,0.75)'/>
+          <text x='32' y='324' fill='rgba(255,255,255,0.85)' font-family='Arial' font-size='26'>${text}</text>
+        </svg>
+      `);
+    }
 
-        const oldSrc = videos[featuredIdx].src;
-        const newSrc = videos[clickedIdx].src;
+    function getAllStrands(){
+      const set = new Set();
+      videos.forEach(v => { if (v.strand) set.add(v.strand); });
+      const order = ["Number","Measurement","Geometry","Statistics"];
+      return Array.from(set).sort((a,b) => order.indexOf(a) - order.indexOf(b));
+    }
 
-        const temp = videos[featuredIdx];
-        videos[featuredIdx] = videos[clickedIdx];
-        videos[clickedIdx] = temp;
+    function buildStrandOptions(){
+      const current = strandSelect.value || "all";
+      const strands = getAllStrands();
 
-        isAnimating = true;
-        const duration = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 520;
+      strandSelect.innerHTML = "";
+      strandSelect.appendChild(new Option("All SEA Strands", "all"));
+      strands.forEach(s => strandSelect.appendChild(new Option(s, s)));
 
-        stage.innerHTML = "";
-        const oldSlide = makeSlide(oldSrc, "anim");
-        const newSlide = makeSlide(newSrc, "fromRight");
-        stage.appendChild(oldSlide);
-        stage.appendChild(newSlide);
+      strandSelect.value = strands.includes(current) ? current : "all";
+    }
 
-        void newSlide.offsetWidth;
+    function getObjGroupsForStrand(strand){
+      const set = new Set();
+      videos.forEach(v => {
+        if (!v.objGroup) return;
+        if (strand === "all" || v.strand === strand) set.add(v.objGroup);
+      });
+      return Array.from(set).sort();
+    }
 
-        newSlide.classList.add("anim");
-        oldSlide.classList.add("toLeft");
-        newSlide.classList.remove("fromRight");
+    function buildObjOptions(){
+      const strand = strandSelect.value || "all";
+      const current = objSelect.value || "all";
 
-        setTimeout(() => {
-          stage.innerHTML = "";
-          stage.appendChild(makeSlide(videos[featuredIdx].src));
-          isAnimating = false;
-          updateFeaturedMeta();
-          buildStrandOptions();
-          buildObjOptions();
-          buildList();
-          syncSidebarHeight();
-        }, duration + 30);
-      }
-
-      function thumbUrlFor(video){
-        if (video.thumb) return video.thumb;
-        const text = encodeURIComponent(video.title || "Video");
-        return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
-          <svg xmlns='http://www.w3.org/2000/svg' width='640' height='360'>
-            <defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'>
-              <stop offset='0' stop-color='#162a55'/><stop offset='1' stop-color='#0b1220'/>
-            </linearGradient></defs>
-            <rect width='100%' height='100%' fill='url(#g)'/>
-            <circle cx='320' cy='180' r='46' fill='rgba(255,255,255,0.12)'/>
-            <polygon points='308,155 308,205 352,180' fill='rgba(255,255,255,0.75)'/>
-            <text x='32' y='324' fill='rgba(255,255,255,0.85)' font-family='Arial' font-size='26'>${text}</text>
-          </svg>
-        `);
-      }
-
-      function getAllStrands(){
-        const set = new Set();
-        videos.forEach(v => { if (v.strand) set.add(v.strand); });
-        const order = ["Number","Measurement","Geometry","Statistics"];
-        return Array.from(set).sort((a,b) => order.indexOf(a) - order.indexOf(b));
-      }
-
-      function buildStrandOptions(){
-        const current = strandSelect.value || "all";
-        const strands = getAllStrands();
-        strandSelect.innerHTML = "";
-        strandSelect.appendChild(new Option("All SEA Strands", "all"));
-        strands.forEach(s => strandSelect.appendChild(new Option(s, s)));
-        strandSelect.value = strands.includes(current) ? current : "all";
-      }
-
-      function getObjGroupsForStrand(strand){
-        const set = new Set();
-        videos.forEach(v => {
-          if (!v.objGroup) return;
-          if (strand === "all" || v.strand === strand) set.add(v.objGroup);
-        });
-        return Array.from(set).sort();
-      }
-
-      function buildObjOptions(){
-        const strand = strandSelect.value || "all";
-        const current = objSelect.value || "all";
-        if (strand === "all"){
-          objRow.style.display = "none";
-          objSelect.innerHTML = "";
-          objSelect.appendChild(new Option("All Objective Groups", "all"));
-          objSelect.value = "all";
-          return;
-        }
-        objRow.style.display = "";
-        const groups = getObjGroupsForStrand(strand);
+      if (strand === "all"){
+        objRow.style.display = "none";
         objSelect.innerHTML = "";
         objSelect.appendChild(new Option("All Objective Groups", "all"));
-        groups.forEach(g => objSelect.appendChild(new Option(g, g)));
-        objSelect.value = groups.includes(current) ? current : "all";
+        objSelect.value = "all";
+        return;
       }
 
-      const DEFAULT_SEARCH_PH = "SEA keyword search (objective language / tags / title / desc)…";
-      function enforceEitherOr(source){
-        const hasKeyword = norm(searchInput.value).length > 0;
-        const hasStrand = (strandSelect.value && strandSelect.value !== "all");
-        const hasObj = (objSelect.value && objSelect.value !== "all");
-        const hasProc = (processSelect.value && processSelect.value !== "all");
-        const hasDropdownFilter = hasStrand || hasObj || hasProc;
+      objRow.style.display = "";
+      const groups = getObjGroupsForStrand(strand);
 
-        if (source === "dropdown") {
-          if (hasDropdownFilter) {
-            searchInput.value = "";
-            searchInput.disabled = true;
-            searchInput.placeholder = "Keyword search disabled while filters are active";
-          } else {
-            searchInput.disabled = false;
-            searchInput.placeholder = DEFAULT_SEARCH_PH;
-          }
-        }
+      objSelect.innerHTML = "";
+      objSelect.appendChild(new Option("All Objective Groups", "all"));
+      groups.forEach(g => objSelect.appendChild(new Option(g, g)));
 
-        if (source === "keyword") {
-          const nowHasKeyword = norm(searchInput.value).length > 0;
-          if (nowHasKeyword) {
-            strandSelect.value = "all";
-            objSelect.value = "all";
-            processSelect.value = "all";
-            strandSelect.disabled = true;
-            objSelect.disabled = true;
-            processSelect.disabled = true;
-            objRow.style.display = "none";
-          } else {
-            strandSelect.disabled = false;
-            objSelect.disabled = false;
-            processSelect.disabled = false;
-          }
-        }
+      objSelect.value = groups.includes(current) ? current : "all";
+    }
 
-        if (!hasKeyword && !hasDropdownFilter) {
+    const DEFAULT_SEARCH_PH = "SEA keyword search (objective language / tags / title / desc)...";
+    function enforceEitherOr(source){
+      const hasKeyword = norm(searchInput.value).length > 0;
+      const hasStrand = (strandSelect.value && strandSelect.value !== "all");
+      const hasObj = (objSelect.value && objSelect.value !== "all");
+      const hasProc = (processSelect.value && processSelect.value !== "all");
+      const hasDropdownFilter = hasStrand || hasObj || hasProc;
+
+      if (source === "dropdown") {
+        if (hasDropdownFilter) {
+          searchInput.value = "";
+          searchInput.disabled = true;
+          searchInput.placeholder = "Keyword search disabled while filters are active";
+          strandSelect.disabled = false;
+          objSelect.disabled = false;
+          processSelect.disabled = false;
+        } else {
           searchInput.disabled = false;
           searchInput.placeholder = DEFAULT_SEARCH_PH;
+        }
+      }
+
+      if (source === "keyword") {
+        const nowHasKeyword = norm(searchInput.value).length > 0;
+        if (nowHasKeyword) {
+          strandSelect.value = "all";
+          objSelect.value = "all";
+          processSelect.value = "all";
+          strandSelect.disabled = true;
+          objSelect.disabled = true;
+          processSelect.disabled = true;
+          objRow.style.display = "none";
+        } else {
           strandSelect.disabled = false;
           objSelect.disabled = false;
           processSelect.disabled = false;
         }
       }
 
-      function passesFilters(v){
-        const q = norm(searchInput.value);
-        const strand = strandSelect.value;
-        const obj = objSelect.value;
-        const proc = processSelect.value;
-
-        const matchesStrand = (strand === "all") || (v.strand === strand);
-        const matchesObj   = (obj === "all") || (v.objGroup === obj);
-        const matchesProc  = (proc === "all") || (v.process === proc);
-
-        const hay = norm(
-          (v.title || "") + " " +
-          (v.desc || "") + " " +
-          (v.strand || "") + " " +
-          (v.objGroup || "") + " " +
-          (v.process || "") + " " +
-          ((v.keywords || []).join(" ")) + " " +
-          ((v._auto || []).join(" "))
-        );
-        const matchesText = !q || hay.includes(q);
-
-        return matchesStrand && matchesObj && matchesProc && matchesText;
-      }
-
-      function buildList(){
-        listEl.innerHTML = "";
-        const visibleIdxs = [];
-        videos.forEach((v, idx) => { if (passesFilters(v)) visibleIdxs.push(idx); });
-
-        countLabel.textContent = String(visibleIdxs.length);
-
-        visibleIdxs.forEach((idx) => {
-          const v = videos[idx];
-
-          const card = document.createElement("div");
-          card.className = "card";
-
-          const badge = document.createElement("div");
-          badge.className = "badge";
-          applyStrandColor(badge, v.strand);
-
-          const left = document.createElement("div");
-          left.className = "badgeLeft";
-          left.textContent = `${v.strand} • ${v.objGroup}`;
-
-          const right = document.createElement("div");
-          right.className = "badgeRight";
-          right.textContent = v.process;
-
-          badge.appendChild(left);
-          badge.appendChild(right);
-
-          const thumb = document.createElement("div");
-          thumb.className = "thumb";
-
-          const thumbRatio = document.createElement("div");
-          thumbRatio.className = "thumbRatio";
-
-          const img = document.createElement("img");
-          img.className = "thumbImg";
-          img.alt = v.title || "Video thumbnail";
-          img.src = thumbUrlFor(v);
-
-          const dot = document.createElement("div");
-          dot.className = "playDot";
-          dot.textContent = "▶";
-
-          thumbRatio.appendChild(img);
-          thumbRatio.appendChild(dot);
-          thumb.appendChild(thumbRatio);
-
-          const meta = document.createElement("div");
-          meta.className = "meta";
-
-          const t = document.createElement("div");
-          t.className = "title";
-          t.textContent = v.title || "Untitled video";
-
-          const d = document.createElement("div");
-          d.className = "sub";
-          d.textContent = v.desc || "";
-
-          meta.appendChild(t);
-          meta.appendChild(d);
-
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "cardBtn";
-          btn.addEventListener("click", () => pushSwapToFeatured(idx));
-
-          card.appendChild(badge);
-          card.appendChild(thumb);
-          card.appendChild(meta);
-          card.appendChild(btn);
-
-          listEl.appendChild(card);
-        });
-
-        syncSidebarHeight();
-      }
-
-      searchInput.addEventListener("input", () => { enforceEitherOr("keyword"); buildList(); });
-      strandSelect.addEventListener("change", () => { buildObjOptions(); enforceEitherOr("dropdown"); buildList(); });
-      objSelect.addEventListener("change", () => { enforceEitherOr("dropdown"); buildList(); });
-      processSelect.addEventListener("change", () => { enforceEitherOr("dropdown"); buildList(); });
-
-      document.getElementById("resetFilters").addEventListener("click", () => {
-        searchInput.value = "";
+      if (!hasKeyword && !hasDropdownFilter) {
         searchInput.disabled = false;
         searchInput.placeholder = DEFAULT_SEARCH_PH;
         strandSelect.disabled = false;
         objSelect.disabled = false;
         processSelect.disabled = false;
-        strandSelect.value = "all";
-        objSelect.value = "all";
-        processSelect.value = "all";
-        objRow.style.display = "none";
-        buildStrandOptions();
-        buildObjOptions();
-        buildList();
+      }
+    }
+
+    function passesFilters(v){
+      const q = norm(searchInput.value);
+      const strand = strandSelect.value;
+      const obj = objSelect.value;
+      const proc = processSelect.value;
+
+      const matchesStrand = (strand === "all") || (v.strand === strand);
+      const matchesObj   = (obj === "all") || (v.objGroup === obj);
+      const matchesProc  = (proc === "all") || (v.process === proc);
+
+      const hay = norm(
+        (v.title || "") + " " +
+        (v.desc || "") + " " +
+        (v.strand || "") + " " +
+        (v.objGroup || "") + " " +
+        (v.process || "") + " " +
+        (v.topic || "") + " " +
+        (v.subtopic || "") + " " +
+        ((v.keywords || []).join(" ")) + " " +
+        ((v._sea || []).join(" ")) + " " +
+        ((v._auto || []).join(" "))
+      );
+      const matchesText = !q || hay.includes(q);
+
+      return matchesStrand && matchesObj && matchesProc && matchesText;
+    }
+
+    function buildList(){
+      listEl.innerHTML = "";
+
+      const visibleIdxs = [];
+      videos.forEach((v, idx) => {
+        if (passesFilters(v)) visibleIdxs.push(idx);
       });
 
-      function syncSidebarHeight(){
-        if (window.matchMedia("(max-width:900px)").matches) {
-          sidebar.style.height = "auto";
-          return;
-        }
-        const h = featuredBox.getBoundingClientRect().height;
-        if (h > 0) sidebar.style.height = h + "px";
-      }
-      window.addEventListener("resize", syncSidebarHeight);
+      countLabel.textContent = `${visibleIdxs.length}`;
 
-      document.getElementById("scrollUp").addEventListener("click", () => listEl.scrollBy({ top:-260, behavior:"smooth" }));
-      document.getElementById("scrollDown").addEventListener("click", () => listEl.scrollBy({ top: 260, behavior:"smooth" }));
+      visibleIdxs.forEach((idx) => {
+        const v = videos[idx];
 
-      // divider
-      const MIN_LEFT_RATIO = 0.50;
-      const MAX_LEFT_RATIO = 0.88;
-      function setLeftRatio(r){
-        const clamped = Math.max(MIN_LEFT_RATIO, Math.min(MAX_LEFT_RATIO, r));
-        split.style.setProperty("--left", (clamped * 100).toFixed(2) + "%");
-        requestAnimationFrame(syncSidebarHeight);
-      }
-      function isDesktop(){ return !window.matchMedia("(max-width:900px)").matches; }
-      function pointerToRatio(clientX){
-        const rect = split.getBoundingClientRect();
-        return (clientX - rect.left) / rect.width;
-      }
-      let dragging = false;
-      divider.addEventListener("pointerdown", (e)=>{ if(!isDesktop()) return; dragging=true; document.body.classList.add("dragging"); divider.setPointerCapture?.(e.pointerId); });
-      divider.addEventListener("pointermove", (e)=>{ if(!dragging || !isDesktop()) return; setLeftRatio(pointerToRatio(e.clientX)); });
-      function endDrag(){ if(!dragging) return; dragging=false; document.body.classList.remove("dragging"); }
-      divider.addEventListener("pointerup", endDrag);
-      divider.addEventListener("pointercancel", endDrag);
+        const card = document.createElement("div");
+        card.className = "card";
 
-      // init
-      buildStrandOptions();
+        const badge = document.createElement("div");
+        badge.className = "badge";
+        applyStrandColor(badge, v.strand);
+
+        const left = document.createElement("div");
+        left.className = "badgeLeft";
+        left.textContent = `${v.strand} • ${v.objGroup}`;
+
+        const right = document.createElement("div");
+        right.className = "badgeRight";
+        right.textContent = v.process;
+
+        badge.appendChild(left);
+        badge.appendChild(right);
+
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
+
+        const thumbRatio = document.createElement("div");
+        thumbRatio.className = "thumbRatio";
+
+        const img = document.createElement("img");
+        img.className = "thumbImg";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.alt = v.title || "Video thumbnail";
+        img.src = thumbUrlFor(v);
+
+        const dot = document.createElement("div");
+        dot.className = "playDot";
+        dot.textContent = "▶";
+
+        thumbRatio.appendChild(img);
+        thumbRatio.appendChild(dot);
+        thumb.appendChild(thumbRatio);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+
+        const t = document.createElement("div");
+        t.className = "title";
+        t.textContent = v.title || "Untitled video";
+
+        const d = document.createElement("div");
+        d.className = "sub";
+        d.textContent = v.desc || "";
+
+        meta.appendChild(t);
+        meta.appendChild(d);
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cardBtn";
+        btn.setAttribute("aria-label", "Open in featured viewer");
+        btn.addEventListener("click", () => pushSwapToFeatured(idx));
+
+        card.appendChild(badge);
+        card.appendChild(thumb);
+        card.appendChild(meta);
+        card.appendChild(btn);
+
+        listEl.appendChild(card);
+      });
+
+      syncSidebarHeight();
+    }
+
+    searchInput.addEventListener("input", () => {
+      enforceEitherOr("keyword");
+      buildList();
+    });
+
+    strandSelect.addEventListener("change", () => {
       buildObjOptions();
-      setFeaturedInstant(0);
+      if (strandSelect.value === "all") {
+        objSelect.value = "all";
+        objRow.style.display = "none";
+      }
       enforceEitherOr("dropdown");
       buildList();
-      requestAnimationFrame(syncSidebarHeight);
+    });
 
-      jsBadge.textContent = "JS: OK ✓ (" + videos.length + " videos)";
-    } catch (err){
-      showErr("Caught error:\n" + (err && (err.stack || err.message) ? (err.stack || err.message) : String(err)));
+    objSelect.addEventListener("change", () => {
+      enforceEitherOr("dropdown");
+      buildList();
+    });
+
+    processSelect.addEventListener("change", () => {
+      enforceEitherOr("dropdown");
+      buildList();
+    });
+
+    document.getElementById("resetFilters").addEventListener("click", () => {
+      searchInput.value = "";
+      searchInput.disabled = false;
+      searchInput.placeholder = DEFAULT_SEARCH_PH;
+
+      strandSelect.disabled = false;
+      objSelect.disabled = false;
+      processSelect.disabled = false;
+
+      strandSelect.value = "all";
+      objSelect.value = "all";
+      processSelect.value = "all";
+      objRow.style.display = "none";
+
+      buildStrandOptions();
+      buildObjOptions();
+      buildList();
+    });
+
+    function syncSidebarHeight(){
+      if (window.matchMedia("(max-width:900px)").matches) {
+        sidebar.style.height = "auto";
+        return;
+      }
+      const h = featuredBox.getBoundingClientRect().height;
+      if (h > 0) sidebar.style.height = h + "px";
     }
-  })();
+    window.addEventListener("resize", syncSidebarHeight);
+
+    document.getElementById("scrollUp").addEventListener("click", () => {
+      listEl.scrollBy({ top: -260, left: 0, behavior: "smooth" });
+    });
+    document.getElementById("scrollDown").addEventListener("click", () => {
+      listEl.scrollBy({ top: 260, left: 0, behavior: "smooth" });
+    });
+
+    const MIN_LEFT_RATIO = 0.50;
+    const MAX_LEFT_RATIO = 0.88;
+
+    function setLeftRatio(r){
+      const clamped = Math.max(MIN_LEFT_RATIO, Math.min(MAX_LEFT_RATIO, r));
+      split.style.setProperty("--left", (clamped * 100).toFixed(2) + "%");
+      requestAnimationFrame(syncSidebarHeight);
+    }
+
+    function isDesktop(){
+      return !window.matchMedia("(max-width:900px)").matches;
+    }
+
+    function pointerToRatio(clientX){
+      const rect = split.getBoundingClientRect();
+      const x = clientX - rect.left;
+      return x / rect.width;
+    }
+
+    let dragging = false;
+
+    function startDrag(e){
+      if (!isDesktop()) return;
+      dragging = true;
+      document.body.classList.add("dragging");
+      divider.setPointerCapture?.(e.pointerId);
+    }
+    function moveDrag(e){
+      if (!dragging || !isDesktop()) return;
+      setLeftRatio(pointerToRatio(e.clientX));
+    }
+    function endDrag(){
+      if (!dragging) return;
+      dragging = false;
+      document.body.classList.remove("dragging");
+    }
+
+    divider.addEventListener("pointerdown", startDrag);
+    divider.addEventListener("pointermove", moveDrag);
+    divider.addEventListener("pointerup", endDrag);
+    divider.addEventListener("pointercancel", endDrag);
+
+    divider.addEventListener("keydown", (e) => {
+      if (!isDesktop()) return;
+      const current = parseFloat(getComputedStyle(split).getPropertyValue("--left")) / 100 || 0.78;
+      if (e.key === "ArrowLeft") { e.preventDefault(); setLeftRatio(current - 0.02); }
+      if (e.key === "ArrowRight"){ e.preventDefault(); setLeftRatio(current + 0.02); }
+      if (e.key === "Home")      { e.preventDefault(); setLeftRatio(MIN_LEFT_RATIO); }
+      if (e.key === "End")       { e.preventDefault(); setLeftRatio(MAX_LEFT_RATIO); }
+    });
+
+    // ✅ Init
+    buildStrandOptions();
+    buildObjOptions();
+    setFeaturedInstant(0);
+
+    enforceEitherOr("dropdown");
+    buildList();
+
+    requestAnimationFrame(syncSidebarHeight);
+    setTimeout(syncSidebarHeight, 200);
   </script>
 </body>
 </html>
