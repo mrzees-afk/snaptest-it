@@ -1,0 +1,1490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SEA Video Album • With Answer Checker</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0b1220;color:#e9eefc}
+    .wrap{width:min(1500px,100%);margin:0 auto;padding:14px}
+
+    /* ✅ Split layout with draggable divider */
+    .split{
+      display:flex;
+      gap:0;
+      align-items:stretch;
+      min-height:0;
+      --left: 78%; /* default featured width */
+    }
+    .pane-left{flex:0 0 var(--left); min-width:50%;}
+    .pane-right{flex:1 1 auto; min-width:0;}
+
+    /* Divider */
+    .divider{
+      flex:0 0 14px;
+      cursor:col-resize;
+      position:relative;
+      user-select:none;
+      touch-action:none;
+    }
+    .divider::before{
+      content:"";
+      position:absolute; inset:10px 5px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 6px 18px rgba(0,0,0,.35);
+    }
+    .divider::after{
+      content:"";
+      position:absolute; left:50%; top:50%;
+      width:3px; height:44px;
+      transform:translate(-50%,-50%);
+      border-radius:999px;
+      background:rgba(255,255,255,.18);
+      box-shadow:
+        -6px 0 0 rgba(255,255,255,.12),
+         6px 0 0 rgba(255,255,255,.12);
+      opacity:.85;
+    }
+    .divider:hover::before{background:rgba(255,255,255,.12)}
+    .dragging .divider::before{background:rgba(255,255,255,.16)}
+    .dragging{cursor:col-resize}
+
+    /* Stack on mobile */
+    @media(max-width:900px){
+      .split{display:block}
+      .divider{display:none}
+      .pane-left,.pane-right{min-width:0;flex:auto}
+    }
+
+    /* ✅ Featured */
+    .featured{
+      border-radius:16px;background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Permanent space ABOVE the video */
+    .featuredTop{
+      padding:10px 12px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background:rgba(0,0,0,.18);
+    }
+    .featuredBadge{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      letter-spacing:.3px;
+      background:rgba(0,0,0,.40);
+      border:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(8px);
+      white-space:nowrap;
+    }
+
+    /* Featured height anchor (16:9) */
+    .ratio16x9{
+      position:relative;width:100%;
+      padding-bottom:56.25%;
+      height:0;overflow:hidden;
+      background:rgba(255,255,255,.04);
+    }
+    .featuredStage{ position:absolute; inset:0; overflow:hidden; }
+
+    /* Sliding frames */
+    .slide{
+      position:absolute; inset:0;
+      will-change:transform;
+      transform:translateX(0);
+      background:rgba(0,0,0,.2);
+    }
+    .slide iframe{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      border:0;
+    }
+    .anim{ transition:transform 520ms cubic-bezier(.2,.85,.2,1); }
+    .fromRight{ transform:translateX(100%); }
+    .toLeft{ transform:translateX(-100%); }
+
+    /* ✅ Meta bar UNDER the video (no overlap) */
+    .featuredMeta{
+      padding:10px 12px;
+      background:rgba(0,0,0,.24);
+      border-top:1px solid rgba(255,255,255,.10);
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:space-between;
+      flex:0 0 auto;
+    }
+    .fText{min-width:0;flex:1 1 auto}
+    .fTitle{
+      font-weight:800;
+      font-size:14px;
+      line-height:1.25;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      margin:0 0 4px;
+    }
+    .fDesc{
+      margin:0;
+      font-size:12.5px;
+      opacity:.9;
+      line-height:1.35;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    .fPills{display:flex;gap:8px;flex:0 0 auto}
+    .pill{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      white-space:nowrap;
+      opacity:.95;
+    }
+
+    /* ✅ Answer checker */
+    .answerRow{
+      margin-top:10px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .miniInput{
+      height:36px;
+      max-width:360px;
+      width:min(360px, 100%);
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22);
+      color:#e9eefc;
+      padding:0 12px;
+      outline:none;
+      font-size:14px;
+    }
+    .miniInput::placeholder{color:rgba(233,238,252,.65)}
+    .miniInput:disabled{opacity:.55; cursor:not-allowed}
+
+    /* Sidebar */
+    .sidebar{
+      border-radius:16px;background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+
+    .sideHeader{
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    .headerRow{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .hint{font-size:12px;opacity:.85}
+    .sideControls{display:flex;gap:8px}
+    .btn{
+      appearance:none;border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.25);color:#e9eefc;
+      padding:7px 10px;border-radius:10px;cursor:pointer;font-size:12px
+    }
+    .btn:hover{background:rgba(255,255,255,.08)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+
+    /* Filters */
+    .filters{display:flex;flex-direction:column;gap:10px}
+    .searchWrap{display:flex;gap:10px;align-items:center}
+    .search{
+      width:100%;height:42px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22);
+      color:#e9eefc;padding:0 12px;outline:none;font-size:14px
+    }
+    .search::placeholder{color:rgba(233,238,252,.65)}
+    .search:disabled{opacity:.55; cursor:not-allowed}
+    .selectRow{display:flex;gap:10px;align-items:center}
+    .select{
+      width:100%;
+      height:42px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22);
+      color:#e9eefc;
+      padding:0 10px;
+      outline:none;
+      font-size:14px;
+      appearance:none;
+    }
+    .select:disabled{opacity:.55; cursor:not-allowed}
+    .count{
+      font-size:12px;padding:7px 10px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22);
+      white-space:nowrap;opacity:.9
+    }
+
+    /* List */
+    .list{
+      flex:1 1 auto;
+      min-height:0;
+      overflow:auto;
+      padding:12px;
+      scroll-behavior:smooth;
+    }
+
+    /* ✅ Cards */
+    .card{
+      position:relative;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.18);
+      margin-bottom:12px;
+      transition:transform .15s ease, background .15s ease, border-color .15s ease;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .card:hover{transform:translateY(-2px);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18)}
+
+    .badge{
+      position:static;
+      display:inline-flex;
+      align-self:flex-start;
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.35);
+      backdrop-filter:blur(6px);
+      max-width:100%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .thumb{
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.04);
+      position:relative;
+      transform: translateZ(0);
+      -webkit-mask-image: -webkit-radial-gradient(white, black);
+    }
+    .thumbRatio{
+      position:relative;
+      width:100%;
+      padding-bottom:56.25%;
+      height:0;
+      overflow:hidden;
+      background:rgba(255,255,255,.04);
+      border-radius:12px;
+    }
+    .thumbImg{
+      position:absolute;
+      inset:-1px;
+      width:calc(100% + 2px);
+      height:calc(100% + 2px);
+      object-fit:cover;
+      object-position:center;
+      display:block;
+      filter:saturate(1.05) contrast(1.03);
+      transform: translateZ(0);
+      will-change: transform;
+    }
+    .playDot{
+      position:absolute;
+      left:10px; bottom:10px;
+      width:28px; height:28px;
+      border-radius:999px;
+      background:rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.18);
+      display:flex;align-items:center;justify-content:center;
+      backdrop-filter:blur(6px);
+      font-size:12px;
+      pointer-events:none;
+    }
+
+    .meta{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+      padding-top:0;
+    }
+    .title{
+      font-weight:800;
+      font-size:14px;
+      line-height:1.25;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis
+    }
+    .sub{
+      font-size:13px;
+      opacity:.92;
+      line-height:1.4;
+      display:-webkit-box;
+      -webkit-line-clamp:3;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+
+    .cardBtn{
+      position:absolute;inset:0;border:0;background:transparent;
+      cursor:pointer;border-radius:14px;
+    }
+    .cardBtn:focus{outline:2px solid rgba(255,255,255,.25);outline-offset:2px}
+
+    @media(max-width:900px){
+      .sidebar{height:auto!important}
+      .sub{-webkit-line-clamp:5}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .anim{transition:none!important}
+      .card{transition:none!important}
+      .list{scroll-behavior:auto}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="split" id="split">
+
+      <!-- Featured (left pane) -->
+      <div class="pane-left">
+        <section class="featured" id="featuredBox">
+
+          <div class="featuredTop">
+            <span class="featuredBadge">Featured</span>
+          </div>
+
+          <div class="ratio16x9" id="featuredRatio">
+            <div class="featuredStage" id="featuredStage"></div>
+          </div>
+
+          <div class="featuredMeta" id="featuredMeta" aria-live="polite">
+            <div class="fText">
+              <p class="fTitle" id="fTitle">—</p>
+              <p class="fDesc" id="fDesc">—</p>
+
+              <!-- ✅ Answer Checker -->
+              <div class="answerRow" id="answerRow">
+                <span class="pill" id="answerLabel">Answer</span>
+                <input id="answerInput" class="miniInput" type="text" placeholder="Answer not added for this video yet" disabled />
+                <button class="btn" id="checkAnswerBtn" type="button" disabled>Check</button>
+                <button class="btn" id="revealAnswerBtn" type="button" style="display:none;">Reveal</button>
+                <span class="hint" id="answerMsg"></span>
+              </div>
+            </div>
+
+            <div class="fPills">
+              <span class="pill" id="fTopic">Topic</span>
+              <span class="pill" id="fSubtopic">Subtopic</span>
+            </div>
+          </div>
+
+        </section>
+      </div>
+
+      <!-- Draggable divider -->
+      <div class="divider" id="divider" role="separator" aria-orientation="vertical"
+           aria-label="Resize featured video and sidebar" tabindex="0"></div>
+
+      <!-- Sidebar (right pane) -->
+      <div class="pane-right">
+        <aside class="sidebar" id="sidebar">
+          <div class="sideHeader">
+            <div class="headerRow">
+              <div class="hint">SEA Math Video Album</div>
+              <div class="sideControls">
+                <button class="btn" id="resetFilters" type="button">Reset</button>
+                <button class="btn" id="scrollUp" type="button">▲</button>
+                <button class="btn" id="scrollDown" type="button">▼</button>
+              </div>
+            </div>
+
+            <div class="filters">
+              <div class="searchWrap">
+                <input class="search" id="searchInput" type="text"
+                       placeholder="Search keywords (title / description / subtopic / tags)..." />
+                <div class="count" id="countLabel">0</div>
+              </div>
+
+              <div class="selectRow">
+                <select class="select" id="topicSelect" aria-label="Filter by topic">
+                  <option value="all">All SEA Topics</option>
+                </select>
+              </div>
+
+              <div class="selectRow" id="subtopicRow" style="display:none;">
+                <select class="select" id="subtopicSelect" aria-label="Filter by subtopic">
+                  <option value="all">All Subtopics</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="list" id="videoList"></div>
+        </aside>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /******************************************************************
+     * ✅ HOW TO ADD ANSWERS (EASY)
+     * Add ANY of the following to a video object:
+     *
+     * answerKeys: ["640", "$640", "640.00", "$640.00"]
+     * answerHint: "Original price"
+     *
+     * OR (quick):
+     * answer: "640"
+     *
+     * The checker accepts multiple formats (spaces, commas, $, m/meters, etc.)
+     ******************************************************************/
+
+    const VALID_TOPICS = ["Number","Measurement","Geometry","Data Handling"];
+
+    // ✅ Your videos (PASTED FROM YOUR WORKING VERSION)
+    // NOTE: I did NOT rewrite your list—this is your structure.
+    // You can now add answerKeys/answer/answerHint to any of these items.
+    const videos = [
+      {
+        title: "VAT Inclusive Price → Original Price (12.5% Tax)",
+        desc: "Reverse VAT problem. $720 is the VAT inclusive price. Uses bar model and fraction reasoning (12.5% = 1/8) to find the original price before tax.",
+        topic: "Measurement",
+        subtopic: "Money",
+        keywords: [
+          "VAT","value added tax","12.5 percent","12.5%","one eighth","1/8",
+          "inclusive price","exclusive price","before tax","after tax","reverse VAT",
+          "fraction method","bar model","keep change flip","reciprocal","720 dinner","tax word problem"
+        ],
+        src: "https://app.screencast.com/0XKGa9Fux4RyT/e",
+        thumb: "https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Taxes.gif",
+  	answerKeys: ["640", "$640", "640.00", "$640.00"],
+  	answerHint: "Original price before VAT"
+      },
+      {
+        title:"Patterns 1",
+        desc:"Pattern Rules",
+        topic:"Number",
+        subtopic:"Number Relationships",
+        keywords:["patterns","pattern rule","sequence","number patterns","term","next number"],
+        src:"https://app.screencast.com/L9SNA5xVSUun5/e"
+      },
+      {
+        title:"Excess and Shortage 1",
+        desc:"Money word problem using comparison and bar model",
+        topic:"Number",
+        subtopic:"Number Relationships",
+        keywords:["excess","shortage","difference","comparison","bar model","money","word problem"],
+        src:"https://app.screencast.com/eiVu8rFJvfLJM/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Excess%20and%20Shortage%203.gif"
+      },
+      {
+        title:"Excess and Shortage 2",
+        desc:"Money word problem using comparison and bar model",
+        topic:"Number",
+        subtopic:"Number Relationships",
+        keywords:["excess","shortage","difference","comparison","bar model","money","word problem"],
+        src:"https://app.screencast.com/PKvk0nOeySQb4/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Excess%20and%20Shortage%203.gif"
+      },
+      {
+        title:"Excess and Shortage 3",
+        desc:"Money word problem using comparison and bar model",
+        topic:"Number",
+        subtopic:"Number Relationships",
+        keywords:["excess","shortage","difference","comparison","bar model","money","word problem"],
+        src:"https://app.screencast.com/zxd6ahkkNJ5Wq/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Excess%20and%20Shortage%203.gif"
+      },
+      {
+        title: "Guess & Check: Apples and Pears (Equal Numbers, $40 More)",
+        desc: "Difference comparison + equal groups. Pears cost $8 each; apples total is $40 more than pears total. Use guess & check to find the number of each and total fruits.",
+        topic: "Number",
+        subtopic: "Number Relationships",
+        keywords: [
+          "guess and check","trial and improvement","difference comparison","equal numbers","equal groups",
+          "apples and pears","total cost","280","40 more","pears 8 each","word problem","systematic list","comparison"
+        ],
+        src: "https://app.screencast.com/Mts3EOjXRxEFC"   /* will be auto-fixed to /e */
+      },
+      {
+        title:"Simple Interest 1",
+        desc:"Money word problem involving simple interest",
+        topic:"Number",
+        subtopic:"Number Relationships",
+        keywords:["simple interest","interest","rate","principal","time","money","percent","percentage"],
+        src:"https://app.screencast.com/FrIk51PbaIkKB/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Simple%20%20Interes.gif"
+      },
+      {
+        title:"Solving Unknowns 1",
+        desc:"Associative property and word problem (unknowns in equations)",
+        topic:"Number",
+        subtopic:"Algebraic Thinking (Unknowns)",
+        keywords:["unknown","equation","algebra","associative property","find the value","word problem"],
+        src:"https://app.screencast.com/r7SqpNtP30aki/e"
+      },
+      {
+        title:"Solving Unknowns 2",
+        desc:"Associative property and word problem (unknowns in equations)",
+        topic:"Number",
+        subtopic:"Algebraic Thinking (Unknowns)",
+        keywords:["unknown","equation","algebra","associative property","find the value","word problem"],
+        src:"https://app.screencast.com/Uhj36MnR6m0ZW/e"
+      },
+      {
+        title:"Solving Unknowns 3",
+        desc:"Systematic Reasoning word problem (unknowns in equations)",
+        topic:"Number",
+        subtopic:"Algebraic Thinking (Unknowns)",
+        keywords:["unknown","equation","algebra","systematic reasoning","find the value","word problem"],
+        src:"https://app.screencast.com/3WtPNsHWnKTXH/e"
+      },
+      {
+        title:"Unequal Sharing Examples 1",
+        desc:"Unequal sharing (division) in word problems",
+        topic:"Number",
+        subtopic:"Ratio & Proportion",
+        keywords:["unequal sharing","division","ratio","proportion","sharing","word problem"],
+        src:"https://app.screencast.com/4pVuO4MqLRjug/e"
+      },
+      {
+        title:"Unequal Sharing Examples 2",
+        desc:"Unequal sharing (division) in word problems",
+        topic:"Number",
+        subtopic:"Ratio & Proportion",
+        keywords:["unequal sharing","division","ratio","proportion","sharing","word problem"],
+        src:"https://app.screencast.com/pldleZlQXVmMI/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif"
+      },
+      {
+        title:"Unequal Sharing Examples 3",
+        desc:"Unequal sharing (division) in word problems",
+        topic:"Number",
+        subtopic:"Ratio & Proportion",
+        keywords:["unequal sharing","division","ratio","proportion","sharing","word problem"],
+        src:"https://app.screencast.com/BE1LMn07OxX4K/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif"
+      },
+      {
+        title:"Unequal Sharing Examples 4",
+        desc:"Unequal sharing (division) in word problems",
+        topic:"Number",
+        subtopic:"Ratio & Proportion",
+        keywords:["unequal sharing","division","ratio","proportion","sharing","word problem"],
+        src:"https://app.screencast.com/ISts8pXbvQJcL/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif"
+      },
+      {
+        title:"Unequal Sharing Examples 5",
+        desc:"Unequal sharing (division) in word problems",
+        topic:"Number",
+        subtopic:"Ratio & Proportion",
+        keywords:["unequal sharing","division","ratio","proportion","sharing","word problem"],
+        src:"https://app.screencast.com/9i2VYDKzstNnO/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif"
+      },
+      {
+        title: "Unequal Sharing: Twice as Much & $200 More ($1,100 Total)",
+        desc: "Mixed comparison word problem. Lauren got twice as much as Alice, and Dave got $200 more than Alice. Uses pattern blocks and bar model to solve.",
+        topic: "Number",
+        subtopic: "Ratio & Proportion",
+        keywords: [
+          "unequal sharing","twice as much","200 more","difference comparison","multiplicative comparison",
+          "pattern blocks","bar model","ratio reasoning","1100 shared","Alice Lauren Dave","working backwards"
+        ],
+        src: "https://app.screencast.com/IEadaQelaVJqe",
+        thumb: "https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif"
+      },
+      {
+        title: "Unequal Sharing: Twice as Much & 1 Meter More (16m Total)",
+        desc: "Mixed comparison problem. Tony used twice as much cloth as Andy, and Ali used 1 meter more than Tony. Solved using bar model and guess & check.",
+        topic: "Number",
+        subtopic: "Ratio & Proportion",
+        keywords: [
+          "unequal sharing","twice as much","1 meter more","cloth problem","pattern blocks",
+          "bar model","guess and check","16 meters total","Tony Andy Ali"
+        ],
+        src: "https://app.screencast.com/QFWgkLwvmY84k/e",
+        thumb: "https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Unequal%20Sharing.gif"
+      },
+
+      {
+        title:"Skill: Dividing Decimals",
+        desc:"Dividing decimals, decimal divisors, worked examples",
+        topic:"Number",
+        subtopic:"Decimals",
+        keywords:["decimals","divide decimals","decimal divisor","quotient","long division"],
+        src:"https://app.screencast.com/fgjnwgtkQkT4h/e"
+      },
+      {
+        title:"Skill: Adding Fractions",
+        desc:"Adding fractions, regrouping, worked examples",
+        topic:"Number",
+        subtopic:"Fractions",
+        keywords:["fractions","add fractions","mixed numbers","regrouping","common denominator"],
+        src:"https://app.screencast.com/wji4KJz7nu4S9/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Skills%20-%20%20Adding%20Fractions.gif"
+      },
+      {
+        title:"Skill: Subtracting Fractions",
+        desc:"Subtracting fractions, regrouping, borrowing, worked examples",
+        topic:"Number",
+        subtopic:"Fractions",
+        keywords:["fractions","subtract fractions","mixed numbers","borrowing","regrouping","common denominator"],
+        src:"https://app.screencast.com/RQ3nwP06DwwZs/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Skills%20-%20%20Subtracgin%20Fractions.gif"
+      },
+      {
+        title:"Vedic Multiplication Method",
+        desc:"Multiplication method / shortcut (long multiplication support)",
+        topic:"Number",
+        subtopic:"Whole Number Operations",
+        keywords:["multiplication","vedic multiplication","shortcut","long multiplication","times tables"],
+        src:"https://app.screencast.com/40hCwuhn2T8h8/e"
+      },
+      {
+        title:"Explicit Trade Division",
+        desc:"Division using trades / place value method",
+        topic:"Number",
+        subtopic:"Whole Number Operations",
+        keywords:["division","place value","trading","regrouping","quotient","long division"],
+        src:"https://app.screencast.com/qPYW9MUgcMFN7/e"
+      },
+      {
+        title:"Estimation Strategy",
+        desc:"Front-end / rounding strategy for word problems",
+        topic:"Number",
+        subtopic:"Problem Solving Strategies",
+        keywords:["estimation","rounding","front end estimation","approximate","word problems"],
+        src:"https://app.screencast.com/dNH69Z0TkBDLP/e"
+      },
+      {
+        title:"Part-Whole Models",
+        desc:"Part-whole model structures supporting operations and problem solving",
+        topic:"Number",
+        subtopic:"Number Relationships",
+        keywords:["part whole","bar model","number bonds","total","parts","model drawing"],
+        src:"https://app.screencast.com/Gm1GGxwF3YlfX/e"
+      },
+
+      {
+        title:"Time 1",
+        desc:"Slow and fast times / adding and subtracting time / time lines",
+        topic:"Measurement",
+        subtopic:"Time",
+        keywords:["time","elapsed time","timeline","hours","minutes","subtract time","add time"],
+        src:"https://app.screencast.com/g1LIovUp0MhPT/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png"
+      },
+      {
+        title:"Time 2",
+        desc:"Time lines / adding and subtracting time",
+        topic:"Measurement",
+        subtopic:"Time",
+        keywords:["time","elapsed time","timeline","hours","minutes","subtract time","add time"],
+        src:"https://app.screencast.com/GQ1uMHhtExpYV/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png"
+      },
+      {
+        title:"Time 3",
+        desc:"Time lines / adding and subtracting time",
+        topic:"Measurement",
+        subtopic:"Time",
+        keywords:["time","elapsed time","timeline","hours","minutes","subtract time","add time"],
+        src:"https://app.screencast.com/GQ1uMHhtExpYV/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png"
+      },
+      {
+        title:"Time 4",
+        desc:"Time lines / adding and subtracting time / time elapsed / converting minutes to hours",
+        topic:"Measurement",
+        subtopic:"Time",
+        keywords:["time","elapsed time","timeline","convert minutes to hours","hours","minutes"],
+        src:"https://app.screencast.com/UogxULyDMnkpP/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png"
+      },
+      {
+        title:"Time 5",
+        desc:"Time lines / adding and subtracting time / time elapsed / converting minutes to hours",
+        topic:"Measurement",
+        subtopic:"Time",
+        keywords:["time","elapsed time","timeline","convert minutes to hours","hours","minutes"],
+        src:"https://app.screencast.com/1IabykTRRUZWH/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Time.png"
+      },
+
+      {
+        title:"Best Buy 1",
+        desc:"Money word problem using best-buy / unit cost reasoning",
+        topic:"Measurement",
+        subtopic:"Money",
+        keywords:["best buy","unit cost","value for money","comparison","cheaper","price per","rate"],
+        src:"https://app.screencast.com/O8VHbNFTUfkHF/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Best%20Buy.gif"
+      },
+      {
+        title:"Best Buy 2",
+        desc:"Money word problem using best-buy / unit cost reasoning",
+        topic:"Measurement",
+        subtopic:"Money",
+        keywords:["best buy","unit cost","value for money","comparison","cheaper","price per","rate"],
+        src:"https://app.screencast.com/askbx8UZPRujS/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Best%20Buy.gif"
+      },
+
+      {
+        title:"Perimeter of Rectilinear Shapes 1",
+        desc:"Perimeter of compound rectilinear shapes using grids",
+        topic:"Measurement",
+        subtopic:"Length & Perimeter",
+        keywords:["perimeter","rectilinear","compound shapes","grid","length","measure"],
+        src:"https://app.screencast.com/bNf8KQ2GFKg7h/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Perimeter%20and%20Length.gif"
+      },
+      {
+        title:"Perimeter of Rectilinear Shapes 2",
+        desc:"Perimeter of compound rectilinear shapes using grids",
+        topic:"Measurement",
+        subtopic:"Length & Perimeter",
+        keywords:["perimeter","rectilinear","compound shapes","grid","length","measure"],
+        src:"https://app.screencast.com/oRrr65bID5IPB/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Perimeter%20and%20Length.gif"
+      },
+      {
+        title:"Common Intervals 1",
+        desc:"Finding missing lengths / common intervals in perimeter problems",
+        topic:"Measurement",
+        subtopic:"Length & Perimeter",
+        keywords:["common intervals","missing length","perimeter","difference","subtract","rectilinear"],
+        src:"https://app.screencast.com/SrNunpF9SaL6R/e",
+        thumb:"https://filedn.com/l6e3GfjKW2oJGhwifWlSKbm/website%20thumbnails/Perimeter%20and%20Length.gif"
+      },
+      {
+        title:"Large Area Divided by Small Areas",
+        desc:"Area / tiling area reasoning (compound shapes and grids)",
+        topic:"Measurement",
+        subtopic:"Area",
+        keywords:["area","tiling","compound shapes","grid","square units","divide area"],
+        src:"https://app.screencast.com/RKeVQPZNJewkm/e"
+      },
+      {
+        title:"Linear Measurement",
+        desc:"Length / guess and check / solving unknown amounts",
+        topic:"Measurement",
+        subtopic:"Length & Perimeter",
+        keywords:["length","linear measurement","guess and check","unknown","measure","cm","m"],
+        src:"https://app.screencast.com/VdkrCEpZ0Reig/e"
+      },
+
+      {
+        title:"Statistics 1",
+        desc:"Average (mean) in word problems",
+        topic:"Data Handling",
+        subtopic:"Mean (Average)",
+        keywords:["mean","average","data","statistics","word problem","total divided by"],
+        src:"https://app.screencast.com/Qn49tL4r33sGz/e"
+      },
+      {
+        title:"Statistics 2",
+        desc:"Average (mean) in word problems",
+        topic:"Data Handling",
+        subtopic:"Mean (Average)",
+        keywords:["mean","average","data","statistics","word problem","total divided by"],
+        src:"https://app.screencast.com/57YRm36Gc6eYV/e"
+      },
+      {
+        title:"Statistics 3",
+        desc:"Suitable Scales",
+        topic:"Data Handling",
+        subtopic:"Graphs",
+        keywords:["graphs","scale","bar graph","line graph","intervals","data handling"],
+        src:"https://app.screencast.com/7uMoAvJAhiooQ/e"
+      },
+
+      {
+        title:"Corrections: Practice Sheet 3",
+        desc:"Corrections practice sheet 3 (worked examples / homework review)",
+        topic:"Number",
+        subtopic:"Problem Solving Strategies",
+        keywords:["corrections","practice","review","worked examples","homework"],
+        src:"https://app.screencast.com/D4JbxxISjlWDE/e"
+      },
+      {
+        title:"Corrections Practice Sheet 4",
+        desc:"Corrections practice (worked examples and review)",
+        topic:"Number",
+        subtopic:"Problem Solving Strategies",
+        keywords:["corrections","practice","review","worked examples","homework"],
+        src:"https://app.screencast.com/CsuSXcmxJ1sYr/e"
+      },
+      {
+        title:"Corrections: Practice Sheet 5",
+        desc:"Corrections practice sheet 5 (worked examples / homework review)",
+        topic:"Number",
+        subtopic:"Problem Solving Strategies",
+        keywords:["corrections","practice","review","worked examples","homework"],
+        src:"https://app.screencast.com/QbS2VtEPP2jyM/e"
+      },
+      {
+        title:"Corrections: Practice Sheet 7",
+        desc:"Corrections practice sheet 7 (worked examples / homework review)",
+        topic:"Number",
+        subtopic:"Problem Solving Strategies",
+        keywords:["corrections","practice","review","worked examples","homework"],
+        src:"https://app.screencast.com/jV16CDST0EchD/e"
+      },
+      {
+        title:"Lesson Video (Screencast)",
+        desc:"General lesson / review video",
+        topic:"Number",
+        subtopic:"Problem Solving Strategies",
+        keywords:["lesson","review","revision","worked examples"],
+        src:"https://app.screencast.com/Do4qujmw2L9oy/e"
+      }
+    ];
+
+    // ✅ Auto-keywords
+    function autoKeywords(v){
+      const raw = [
+        v.title, v.desc, v.topic, v.subtopic,
+        ...(Array.isArray(v.keywords) ? v.keywords : []),
+        ...(Array.isArray(v.answerKeys) ? v.answerKeys : []),
+        v.answerHint, v.answer, v.answerKey
+      ].filter(Boolean).join(" ");
+
+      return Array.from(new Set(
+        raw
+          .toLowerCase()
+          .replace(/[^a-z0-9\s&()%$=.,-]/g," ")
+          .split(/\s+/)
+          .filter(w => w.length >= 2)
+      ));
+    }
+
+    function normalizeVideo(v){
+      const out = { ...v };
+
+      // Force /e at end of Screencast src
+      if (out.src) {
+        out.src = String(out.src).trim();
+        if (!out.src.endsWith("/e")) out.src = out.src.replace(/\/?$/,"/e");
+      }
+
+      // Fix "Money" accidentally used as topic
+      if ((out.topic || "").trim().toLowerCase() === "money"){
+        out.topic = "Measurement";
+        out.subtopic = out.subtopic || "Money";
+      }
+
+      // Force valid topic
+      if (!VALID_TOPICS.includes(out.topic)){
+        const text = ((out.title||"") + " " + (out.desc||"") + " " + (out.subtopic||"")).toLowerCase();
+        if (text.includes("time") || text.includes("perimeter") || text.includes("area") || text.includes("length") || text.includes("money") || text.includes("vat")){
+          out.topic = "Measurement";
+        } else if (text.includes("graph") || text.includes("mean") || text.includes("average") || text.includes("statistics")){
+          out.topic = "Data Handling";
+        } else {
+          out.topic = "Number";
+        }
+      }
+
+      if ((out.subtopic || "").trim().toLowerCase() === "length"){
+        out.subtopic = "Length & Perimeter";
+      }
+      if (!out.subtopic) out.subtopic = "General";
+
+      // Keywords
+      out.keywords = Array.isArray(out.keywords) ? out.keywords : (out.keywords ? [String(out.keywords)] : []);
+
+      // ✅ Answers: accept multiple styles and normalize to answerKeys array
+      let keys = null;
+      if (Array.isArray(out.answerKeys)) keys = out.answerKeys;
+      else if (typeof out.answerKeys === "string" && out.answerKeys.trim()) keys = [out.answerKeys.trim()];
+      else if (typeof out.answer === "string" && out.answer.trim()) keys = [out.answer.trim()];
+      else if (typeof out.answerKey === "string" && out.answerKey.trim()) keys = [out.answerKey.trim()];
+
+      out.answerKeys = keys ? keys.map(x => String(x).trim()).filter(Boolean) : null;
+
+      out._auto = autoKeywords(out);
+      return out;
+    }
+
+    for (let i = 0; i < videos.length; i++){
+      videos[i] = normalizeVideo(videos[i]);
+    }
+
+    // ✅ Topic colors
+    const TOPIC_COLORS = {
+      "Number":        { bg:"rgba(59,130,246,.18)",  border:"rgba(59,130,246,.35)" },
+      "Measurement":   { bg:"rgba(34,197,94,.18)",   border:"rgba(34,197,94,.35)" },
+      "Geometry":      { bg:"rgba(168,85,247,.18)",  border:"rgba(168,85,247,.35)" },
+      "Data Handling": { bg:"rgba(251,146,60,.18)",  border:"rgba(251,146,60,.35)" }
+    };
+
+    function applyTopicColor(el, topic){
+      const c = TOPIC_COLORS[topic];
+      if (!c) return;
+      el.style.background = c.bg;
+      el.style.borderColor = c.border;
+    }
+
+    const split         = document.getElementById("split");
+    const divider       = document.getElementById("divider");
+
+    const featuredBox   = document.getElementById("featuredBox");
+    const stage         = document.getElementById("featuredStage");
+    const listEl        = document.getElementById("videoList");
+    const searchInput   = document.getElementById("searchInput");
+    const countLabel    = document.getElementById("countLabel");
+    const sidebar       = document.getElementById("sidebar");
+    const topicSelect   = document.getElementById("topicSelect");
+
+    const subtopicSelect = document.getElementById("subtopicSelect");
+    const subtopicRow    = document.getElementById("subtopicRow");
+
+    const fTitle    = document.getElementById("fTitle");
+    const fDesc     = document.getElementById("fDesc");
+    const fTopic    = document.getElementById("fTopic");
+    const fSubtopic = document.getElementById("fSubtopic");
+
+    // Answer UI
+    const answerLabel = document.getElementById("answerLabel");
+    const answerInput = document.getElementById("answerInput");
+    const checkAnswerBtn = document.getElementById("checkAnswerBtn");
+    const revealAnswerBtn = document.getElementById("revealAnswerBtn");
+    const answerMsg = document.getElementById("answerMsg");
+
+    const norm = s => (s || "").toLowerCase().trim();
+
+    function makeIframe(src){
+      const iframe = document.createElement("iframe");
+      iframe.src = src;
+      iframe.setAttribute("scrolling","no");
+      iframe.setAttribute("frameborder","0");
+      iframe.setAttribute("allowfullscreen","true");
+      return iframe;
+    }
+
+    function makeSlide(src, extraClass=""){
+      const slide = document.createElement("div");
+      slide.className = `slide ${extraClass}`.trim();
+      slide.appendChild(makeIframe(src));
+      return slide;
+    }
+
+    let featuredIdx = 0;
+    let isAnimating = false;
+
+    /* ✅ Answer compare (forgiving) */
+    function normalizeForCompare(s){
+      return (s || "")
+        .toLowerCase()
+        .replace(/\$/g,"")
+        .replace(/,/g," ")
+        .replace(/\band\b/g," ")
+        .replace(/[:=]/g," ")
+        .replace(/\b(dollars?|ttd)\b/g,"")
+        .replace(/\b(meters?|metres?|m)\b/g,"")
+        .replace(/\s+/g," ")
+        .trim();
+    }
+
+    function getAnswerVariants(v){
+      if (!v || !Array.isArray(v.answerKeys) || v.answerKeys.length === 0) return null;
+      const raw = v.answerKeys.map(x => String(x));
+      const normed = raw.map(x => normalizeForCompare(x));
+      return { raw, norm: normed };
+    }
+
+    function setAnswerUI(){
+      const v = videos[featuredIdx];
+      const variants = getAnswerVariants(v);
+
+      answerLabel.textContent = v.answerHint ? `Answer • ${v.answerHint}` : "Answer";
+      answerMsg.textContent = "";
+      revealAnswerBtn.style.display = "none";
+      answerInput.value = "";
+
+      if (!variants){
+        answerInput.disabled = true;
+        checkAnswerBtn.disabled = true;
+        answerInput.placeholder = "Answer not added for this video yet";
+        return;
+      }
+
+      answerInput.disabled = false;
+      checkAnswerBtn.disabled = false;
+      answerInput.placeholder = "Type your answer (any reasonable format)...";
+    }
+
+    checkAnswerBtn.addEventListener("click", () => {
+      const v = videos[featuredIdx];
+      const variants = getAnswerVariants(v);
+      if (!variants) return;
+
+      const user = normalizeForCompare(answerInput.value);
+      if (!user){
+        answerMsg.textContent = "Type an answer first.";
+        revealAnswerBtn.style.display = "none";
+        return;
+      }
+
+      const ok = variants.norm.some(k => k === user);
+
+      if (ok){
+        answerMsg.textContent = "✅ Correct!";
+        revealAnswerBtn.style.display = "none";
+      } else {
+        answerMsg.textContent = "❌ Not quite. Watch the video (or click Reveal).";
+        revealAnswerBtn.style.display = "";
+      }
+    });
+
+    revealAnswerBtn.addEventListener("click", () => {
+      const v = videos[featuredIdx];
+      if (!v.answerKeys || !v.answerKeys.length) return;
+      answerMsg.textContent = `✅ Answer: ${v.answerKeys[0]}`;
+      revealAnswerBtn.style.display = "none";
+    });
+
+    answerInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); checkAnswerBtn.click(); }
+    });
+
+    function updateFeaturedMeta(){
+      const v = videos[featuredIdx];
+      fTitle.textContent = v.title || "—";
+      fDesc.textContent  = v.desc  || "—";
+
+      fTopic.textContent    = v.topic || "Topic";
+      fSubtopic.textContent = v.subtopic || "Subtopic";
+
+      fTopic.style.background = "rgba(255,255,255,.06)";
+      fTopic.style.borderColor = "rgba(255,255,255,.14)";
+      applyTopicColor(fTopic, v.topic);
+
+      fSubtopic.style.background = "rgba(255,255,255,.06)";
+      fSubtopic.style.borderColor = "rgba(255,255,255,.14)";
+
+      setAnswerUI();
+    }
+
+    function setFeaturedInstant(idx){
+      featuredIdx = idx;
+      stage.innerHTML = "";
+      stage.appendChild(makeSlide(videos[featuredIdx].src));
+      updateFeaturedMeta();
+    }
+
+    function pushSwapToFeatured(clickedIdx){
+      if (isAnimating || clickedIdx === featuredIdx) return;
+
+      const oldSrc = videos[featuredIdx].src;
+      const newSrc = videos[clickedIdx].src;
+
+      const temp = videos[featuredIdx];
+      videos[featuredIdx] = videos[clickedIdx];
+      videos[clickedIdx] = temp;
+
+      isAnimating = true;
+      const duration = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 520;
+
+      stage.innerHTML = "";
+      const oldSlide = makeSlide(oldSrc, "anim");
+      const newSlide = makeSlide(newSrc, "fromRight");
+      stage.appendChild(oldSlide);
+      stage.appendChild(newSlide);
+
+      void newSlide.offsetWidth;
+
+      newSlide.classList.add("anim");
+      oldSlide.classList.add("toLeft");
+      newSlide.classList.remove("fromRight");
+
+      setTimeout(() => {
+        stage.innerHTML = "";
+        stage.appendChild(makeSlide(videos[featuredIdx].src));
+        isAnimating = false;
+        updateFeaturedMeta();
+        buildTopicOptions();
+        buildSubtopicOptions();
+        buildList();
+        syncSidebarHeight();
+      }, duration + 30);
+    }
+
+    function thumbUrlFor(video){
+      if (video.thumb) return video.thumb;
+      const text = encodeURIComponent(video.title || "Video");
+      return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+        <svg xmlns='http://www.w3.org/2000/svg' width='640' height='360'>
+          <defs>
+            <linearGradient id='g' x1='0' x2='1' y1='0' y2='1'>
+              <stop offset='0' stop-color='#162a55'/>
+              <stop offset='1' stop-color='#0b1220'/>
+            </linearGradient>
+          </defs>
+          <rect width='100%' height='100%' fill='url(#g)'/>
+          <circle cx='320' cy='180' r='46' fill='rgba(255,255,255,0.12)'/>
+          <polygon points='308,155 308,205 352,180' fill='rgba(255,255,255,0.75)'/>
+          <text x='32' y='324' fill='rgba(255,255,255,0.85)' font-family='Arial' font-size='26'>${text}</text>
+        </svg>
+      `);
+    }
+
+    function getAllTopics(){
+      const set = new Set();
+      videos.forEach(v => { if (v.topic) set.add(v.topic); });
+      const order = ["Number","Measurement","Geometry","Data Handling"];
+      return Array.from(set).sort((a,b) => order.indexOf(a) - order.indexOf(b));
+    }
+
+    function buildTopicOptions(){
+      const current = topicSelect.value || "all";
+      const topics = getAllTopics();
+
+      topicSelect.innerHTML = "";
+      const optAll = document.createElement("option");
+      optAll.value = "all";
+      optAll.textContent = "All SEA Topics";
+      topicSelect.appendChild(optAll);
+
+      topics.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        topicSelect.appendChild(opt);
+      });
+
+      topicSelect.value = topics.includes(current) ? current : "all";
+    }
+
+    function getSubtopicsForTopic(topic){
+      const set = new Set();
+      videos.forEach(v => {
+        if (!v.subtopic) return;
+        if (topic === "all" || (v.topic || "") === topic) set.add(v.subtopic);
+      });
+      return Array.from(set).sort();
+    }
+
+    function buildSubtopicOptions(){
+      const topic = topicSelect.value || "all";
+      const current = subtopicSelect.value || "all";
+
+      if (topic === "all") {
+        subtopicRow.style.display = "none";
+        subtopicSelect.innerHTML = `<option value="all">All Subtopics</option>`;
+        subtopicSelect.value = "all";
+        return;
+      }
+
+      subtopicRow.style.display = "";
+      const subs = getSubtopicsForTopic(topic);
+
+      subtopicSelect.innerHTML = "";
+      const optAll = document.createElement("option");
+      optAll.value = "all";
+      optAll.textContent = "All Subtopics";
+      subtopicSelect.appendChild(optAll);
+
+      subs.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.textContent = s;
+        subtopicSelect.appendChild(opt);
+      });
+
+      subtopicSelect.value = subs.includes(current) ? current : "all";
+    }
+
+    /* ✅ Either/Or filter behavior */
+    const DEFAULT_SEARCH_PH = "Search keywords (title / description / subtopic / tags)...";
+    function enforceEitherOr(source){
+      const hasKeyword = norm(searchInput.value).length > 0;
+      const hasTopic = (topicSelect.value && topicSelect.value !== "all");
+      const hasSubtopic = (subtopicSelect.value && subtopicSelect.value !== "all");
+      const hasDropdownFilter = hasTopic || hasSubtopic;
+
+      if (source === "topic") {
+        if (hasDropdownFilter) {
+          searchInput.value = "";
+          searchInput.disabled = true;
+          searchInput.placeholder = "Keyword search disabled while topic/subtopic filter is active";
+          topicSelect.disabled = false;
+          subtopicSelect.disabled = false;
+        } else {
+          searchInput.disabled = false;
+          searchInput.placeholder = DEFAULT_SEARCH_PH;
+        }
+      }
+
+      if (source === "keyword") {
+        const nowHasKeyword = norm(searchInput.value).length > 0;
+        if (nowHasKeyword) {
+          topicSelect.value = "all";
+          subtopicSelect.value = "all";
+          topicSelect.disabled = true;
+          subtopicSelect.disabled = true;
+          subtopicRow.style.display = "none";
+        } else {
+          topicSelect.disabled = false;
+          subtopicSelect.disabled = false;
+        }
+      }
+
+      if (!hasKeyword && !hasDropdownFilter) {
+        searchInput.disabled = false;
+        searchInput.placeholder = DEFAULT_SEARCH_PH;
+        topicSelect.disabled = false;
+        subtopicSelect.disabled = false;
+      }
+    }
+
+    function passesFilters(v){
+      const q = norm(searchInput.value);
+      const topic = topicSelect.value;
+      const sub = subtopicSelect.value;
+
+      const matchesTopic = (topic === "all") || ((v.topic || "") === topic);
+      const matchesSub   = (sub === "all") || ((v.subtopic || "") === sub);
+
+      const hay = norm(
+        (v.title || "") + " " +
+        (v.desc || "") + " " +
+        (v.topic || "") + " " +
+        (v.subtopic || "") + " " +
+        ((v.keywords || []).join(" ")) + " " +
+        ((v._auto || []).join(" "))
+      );
+      const matchesText = !q || hay.includes(q);
+
+      return matchesTopic && matchesSub && matchesText;
+    }
+
+    function buildList(){
+      listEl.innerHTML = "";
+
+      const visibleIdxs = [];
+      videos.forEach((v, idx) => {
+        if (passesFilters(v)) visibleIdxs.push(idx);
+      });
+
+      countLabel.textContent = `${visibleIdxs.length}`;
+
+      visibleIdxs.forEach((idx) => {
+        const v = videos[idx];
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const badge = document.createElement("div");
+        badge.className = "badge";
+        badge.textContent = v.subtopic ? `${v.topic} • ${v.subtopic}` : (v.topic || "Topic");
+        applyTopicColor(badge, v.topic);
+
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
+
+        const thumbRatio = document.createElement("div");
+        thumbRatio.className = "thumbRatio";
+
+        const img = document.createElement("img");
+        img.className = "thumbImg";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.alt = v.title || "Video thumbnail";
+        img.src = thumbUrlFor(v);
+
+        const dot = document.createElement("div");
+        dot.className = "playDot";
+        dot.textContent = "▶";
+
+        thumbRatio.appendChild(img);
+        thumbRatio.appendChild(dot);
+        thumb.appendChild(thumbRatio);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+
+        const t = document.createElement("div");
+        t.className = "title";
+        t.textContent = v.title || "Untitled video";
+
+        const d = document.createElement("div");
+        d.className = "sub";
+        d.textContent = v.desc || "";
+
+        meta.appendChild(t);
+        meta.appendChild(d);
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cardBtn";
+        btn.setAttribute("aria-label", "Open in featured viewer");
+        btn.addEventListener("click", () => pushSwapToFeatured(idx));
+
+        card.appendChild(badge);
+        card.appendChild(thumb);
+        card.appendChild(meta);
+        card.appendChild(btn);
+
+        listEl.appendChild(card);
+      });
+
+      syncSidebarHeight();
+    }
+
+    searchInput.addEventListener("input", () => {
+      enforceEitherOr("keyword");
+      buildList();
+    });
+
+    topicSelect.addEventListener("change", () => {
+      buildSubtopicOptions();
+      if (topicSelect.value === "all") {
+        subtopicSelect.value = "all";
+        subtopicRow.style.display = "none";
+      }
+      enforceEitherOr("topic");
+      buildList();
+    });
+
+    subtopicSelect.addEventListener("change", () => {
+      enforceEitherOr("topic");
+      buildList();
+    });
+
+    document.getElementById("resetFilters").addEventListener("click", () => {
+      searchInput.value = "";
+      searchInput.disabled = false;
+      searchInput.placeholder = DEFAULT_SEARCH_PH;
+
+      topicSelect.disabled = false;
+      subtopicSelect.disabled = false;
+
+      topicSelect.value = "all";
+      subtopicSelect.value = "all";
+      subtopicRow.style.display = "none";
+
+      buildTopicOptions();
+      buildSubtopicOptions();
+      buildList();
+    });
+
+    function syncSidebarHeight(){
+      if (window.matchMedia("(max-width:900px)").matches) {
+        sidebar.style.height = "auto";
+        return;
+      }
+      const h = featuredBox.getBoundingClientRect().height;
+      if (h > 0) sidebar.style.height = h + "px";
+    }
+    window.addEventListener("resize", syncSidebarHeight);
+
+    document.getElementById("scrollUp").addEventListener("click", () => {
+      listEl.scrollBy({ top: -260, left: 0, behavior: "smooth" });
+    });
+    document.getElementById("scrollDown").addEventListener("click", () => {
+      listEl.scrollBy({ top: 260, left: 0, behavior: "smooth" });
+    });
+
+    /* ✅ Resizable split logic (featured min 50%) */
+    const MIN_LEFT_RATIO = 0.50;
+    const MAX_LEFT_RATIO = 0.88;
+
+    function setLeftRatio(r){
+      const clamped = Math.max(MIN_LEFT_RATIO, Math.min(MAX_LEFT_RATIO, r));
+      split.style.setProperty("--left", (clamped * 100).toFixed(2) + "%");
+      requestAnimationFrame(syncSidebarHeight);
+    }
+
+    function isDesktop(){
+      return !window.matchMedia("(max-width:900px)").matches;
+    }
+
+    function pointerToRatio(clientX){
+      const rect = split.getBoundingClientRect();
+      const x = clientX - rect.left;
+      return x / rect.width;
+    }
+
+    let dragging = false;
+
+    function startDrag(e){
+      if (!isDesktop()) return;
+      dragging = true;
+      document.body.classList.add("dragging");
+      divider.setPointerCapture?.(e.pointerId);
+    }
+    function moveDrag(e){
+      if (!dragging || !isDesktop()) return;
+      setLeftRatio(pointerToRatio(e.clientX));
+    }
+    function endDrag(){
+      if (!dragging) return;
+      dragging = false;
+      document.body.classList.remove("dragging");
+    }
+
+    divider.addEventListener("pointerdown", startDrag);
+    divider.addEventListener("pointermove", moveDrag);
+    divider.addEventListener("pointerup", endDrag);
+    divider.addEventListener("pointercancel", endDrag);
+
+    divider.addEventListener("keydown", (e) => {
+      if (!isDesktop()) return;
+      const current = parseFloat(getComputedStyle(split).getPropertyValue("--left")) / 100 || 0.78;
+      if (e.key === "ArrowLeft") { e.preventDefault(); setLeftRatio(current - 0.02); }
+      if (e.key === "ArrowRight"){ e.preventDefault(); setLeftRatio(current + 0.02); }
+      if (e.key === "Home")      { e.preventDefault(); setLeftRatio(MIN_LEFT_RATIO); }
+      if (e.key === "End")       { e.preventDefault(); setLeftRatio(MAX_LEFT_RATIO); }
+    });
+
+    // ✅ Init
+    buildTopicOptions();
+    buildSubtopicOptions();
+    setFeaturedInstant(0);
+
+    enforceEitherOr("topic");
+    buildList();
+
+    requestAnimationFrame(syncSidebarHeight);
+    setTimeout(syncSidebarHeight, 200);
+
+    // Debug helper (optional): open DevTools console to confirm count
+    // console.log("VIDEOS LOADED:", videos.length);
+  </script>
+</body>
+</html>
